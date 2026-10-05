@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradingStore | Premium TradingView Scripts, Bots, Books & VIP Academy</title>
+  <meta name="description" content="Access elite algorithmic TradingView scripts, scalping bots, SMC/ICT trading books, and comprehensive institutional courses on TradingStore." />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==========================================================================
+       LIVE MARKET TICKER
+       ========================================================================== -->
+  <div class="ticker-bar" id="liveTickerBar">
+    <div class="ticker-track">
+      <div class="ticker-item"><span class="ticker-symbol">BTC/USDT</span> <span class="ticker-price">$94,820.50</span> <span class="ticker-up">+3.4% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">ETH/USDT</span> <span class="ticker-price">$3,480.20</span> <span class="ticker-up">+4.1% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">XAU/USD (GOLD)</span> <span class="ticker-price">$2,684.30</span> <span class="ticker-up">+1.8% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">EUR/USD</span> <span class="ticker-price">1.0842</span> <span class="ticker-down">-0.2% ▼</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">NAS100</span> <span class="ticker-price">20,410.80</span> <span class="ticker-up">+1.2% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">SOL/USDT</span> <span class="ticker-price">$214.60</span> <span class="ticker-up">+6.8% ▲</span></div>
+      <!-- Duplicate for seamless infinite loop -->
+      <div class="ticker-item"><span class="ticker-symbol">BTC/USDT</span> <span class="ticker-price">$94,820.50</span> <span class="ticker-up">+3.4% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">ETH/USDT</span> <span class="ticker-price">$3,480.20</span> <span class="ticker-up">+4.1% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">XAU/USD (GOLD)</span> <span class="ticker-price">$2,684.30</span> <span class="ticker-up">+1.8% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">EUR/USD</span> <span class="ticker-price">1.0842</span> <span class="ticker-down">-0.2% ▼</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">NAS100</span> <span class="ticker-price">20,410.80</span> <span class="ticker-up">+1.2% ▲</span></div>
+      <div class="ticker-item"><span class="ticker-symbol">SOL/USDT</span> <span class="ticker-price">$214.60</span> <span class="ticker-up">+6.8% ▲</span></div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       HEADER & NAVIGATION
+       ========================================================================== -->
+  <header class="main-header">
+    <div class="container header-content">
+      <!-- Brand Logo -->
+      <a href="#bots" class="brand-logo" id="headerBrandLogo">
+        <img id="headerLogoImg" src="logo.svg" alt="TradingStore" />
+      </a>
+
+      <!-- 4 Core Navigation Tabs -->
+      <nav class="nav-tabs" aria-label="Main Navigation">
+        <button type="button" class="nav-tab-btn active" data-tab="bots">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          Bots
+        </button>
+        <button type="button" class="nav-tab-btn" data-tab="books">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          Books
+        </button>
+        <button type="button" class="nav-tab-btn" data-tab="courses">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+          Courses
+        </button>
+        <button type="button" class="nav-tab-btn vip-tab" data-tab="premium">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          Premium
+          <span class="vip-badge-tag">VIP</span>
+        </button>
+      </nav>
+
+      <!-- Action Right -->
+      <div class="header-actions">
+        <a href="admin.html" class="btn-admin-link" title="Open Admin Command Center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+          Admin Portal
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       HERO BANNER & SEARCH BAR
+       ========================================================================== -->
+  <main class="container">
+    <section class="hero-section">
+      <div class="hero-pill">
+        <span class="pulse-dot"></span>
+        INSTITUTIONAL ALGORITHMIC SUITE
+      </div>
+      <h1 class="hero-title">
+        Next-Gen TradingView Scripts & <span class="gradient-text">Alpha Bots</span>
+      </h1>
+      <p class="hero-subtitle">
+        Dominate Crypto, Forex, and Indices with non-repainting precision indicators, verified trading books, video masterclasses, and VIP algorithm access.
+      </p>
+
+      <!-- Global Filter & Search Bar -->
+      <div class="filter-search-bar">
+        <div class="search-input-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="catalogSearchInput" class="search-input" placeholder="Search bots, PineScript, authors, or courses..." />
+        </div>
+
+        <div class="filter-chips">
+          <button type="button" class="filter-chip active" data-filter="all">All Items</button>
+          <button type="button" class="filter-chip" data-filter="scalping">Scalping</button>
+          <button type="button" class="filter-chip" data-filter="ict">ICT / SMC</button>
+          <button type="button" class="filter-chip" data-filter="volume">Volume Flow</button>
+          <button type="button" class="filter-chip" data-filter="momentum">Momentum</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 1: BOTS HUB
+         ========================================================================== -->
+    <section id="page-bots" class="content-page active">
+      <div class="page-intro-header">
+        <div>
+          <h2>TradingView Scripts & Bots</h2>
+          <p>Verified algorithmic PineScript v5 indicators and automated strategy setups.</p>
+        </div>
+      </div>
+      <div class="cards-grid" id="botsGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 2: BOOKS HUB
+         ========================================================================== -->
+    <section id="page-books" class="content-page">
+      <div class="page-intro-header">
+        <div>
+          <h2>Trading Books & PDF Library</h2>
+          <p>Institutional technical analysis guides, SMC bibles, and market psychology books.</p>
+        </div>
+      </div>
+      <div class="cards-grid" id="booksGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 3: COURSES HUB
+         ========================================================================== -->
+    <section id="page-courses" class="content-page">
+      <div class="page-intro-header">
+        <div>
+          <h2>Trading Academy & Video Courses</h2>
+          <p>Structured video mentorship programs from prop-firm funded traders.</p>
+        </div>
+      </div>
+      <div class="cards-grid" id="coursesGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         PAGE 4: PREMIUM VIP HUB (SALES WITH MANUAL PAYMENT & KEY UNLOCK)
+         ========================================================================== -->
+    <section id="page-premium" class="content-page">
+      <div class="premium-vip-hero">
+        <span class="premium-tag">★ PRIVATE INVITE-ONLY ACCESS</span>
+        <h2 class="premium-title">VIP TradingView Algorithmic Systems</h2>
+        <p style="color: var(--text-secondary); max-width: 720px; font-size: 1.05rem; line-height: 1.6;">
+          Our private indicator scripts are backed by quantitative backtesting. Purchase via JazzCash, EasyPaisa, Binance USDT, or Bank Transfer, submit payment screenshot, and receive your VIP License Key directly.
+        </p>
+      </div>
+
+      <div class="premium-grid" id="premiumGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <div class="footer-links">
+        <a href="#bots" onclick="window.tradexApp.switchTab('bots')">Bots & Scripts</a>
+        <a href="#books" onclick="window.tradexApp.switchTab('books')">Trading Books</a>
+        <a href="#courses" onclick="window.tradexApp.switchTab('courses')">Courses</a>
+        <a href="#premium" onclick="window.tradexApp.switchTab('premium')">VIP Premium</a>
+        <a href="admin.html">Admin Panel</a>
+      </div>
+      <p class="footer-copy">
+        &copy; 2026 <span id="footerAppName">TradingStore</span>. All Rights Reserved. Built for high-frequency traders and quantitative analysts.
+      </p>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       GATEKEEPER SECURITY MODAL (ENTRY GATE)
+       Strict Device-Limit Password OR Stealth 8-Second Social Verification
+       ========================================================================== -->
+  <div class="modal-overlay" id="gatekeeperModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.4rem;">🔐</span>
+          <div>
+            <h3>VIP Portal Verification</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Enter your access password or verify community membership</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <!-- Gatekeeper Tabs -->
+        <div class="gatekeeper-tabs">
+          <button type="button" class="gate-tab-btn active" id="gateTabPassword">
+            Access Password
+          </button>
+          <button type="button" class="gate-tab-btn" id="gateTabSocial">
+            Join Channels (Free)
+          </button>
+        </div>
+
+        <!-- View 1: Password Entry (Device Limit Enforced) -->
+        <div class="gate-view active" id="gateViewPassword">
+          <form id="gatekeeperPasswordForm">
+            <div class="form-group">
+              <label class="form-label" for="gatePasswordInput">Enter VIP Access Password:</label>
+              <input type="text" id="gatePasswordInput" class="form-input" placeholder="e.g. STORE-VIP-2026" required autocomplete="off" />
+              <div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted);">
+                🔒 <em>Notice: Each access key is tied to a strict maximum device limit. Sharing keys will cause device lockouts.</em>
+              </div>
+            </div>
+
+            <div id="gatePasswordAlert" style="display: none; background: rgba(255, 59, 105, 0.12); border: 1px solid var(--neon-bear); border-radius: 8px; padding: 12px; font-size: 0.88rem; color: #ff6b8b; margin-bottom: 16px;"></div>
+
+            <button type="submit" class="btn-primary" id="btnSubmitGatePassword" style="width: 100%; justify-content: center; padding: 12px;">
+              Unlock Access
+            </button>
+          </form>
+        </div>
+
+        <!-- View 2: Social Channels Join (Dynamic: 1, 2, 3 or more channels) -->
+        <div class="gate-view" id="gateViewSocial">
+          <p id="gateSocialSubtitle" style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+            Join our official channel(s) below to unlock full access to all trading bots, books, and courses.
+          </p>
+
+          <!-- Dynamic Social Channels List rendered by app.js -->
+          <div id="gateSocialLinksContainer" class="gate-social-links-list" style="margin-bottom: 16px;"></div>
+
+          <div id="gateSocialAlert" style="display: none; background: rgba(0, 184, 255, 0.1); border: 1px solid var(--neon-cyan); border-radius: 8px; padding: 12px; font-size: 0.88rem; color: #a5e9ff; margin: 16px 0;"></div>
+
+          <button type="button" class="btn-primary" id="btnConfirmSocialJoin" style="width: 100%; justify-content: center; padding: 14px; margin-top: 14px;">
+            Confirm & Enter Site
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       PURCHASE MODAL (PAYMENT DETAILS & SCREENSHOT UPLOADER)
+       ========================================================================== -->
+  <div class="modal-overlay" id="purchaseModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3>Complete Purchase</h3>
+          <p id="modalProductTitle" style="color: var(--neon-gold); font-size: 0.95rem; font-weight: 600; margin-top: 2px;">PRO ALGO APEX</p>
+        </div>
+        <button type="button" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Price Display -->
+        <div style="background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+          <span style="color: var(--text-secondary); font-size: 0.9rem;">Amount Due:</span>
+          <strong id="modalProductPrice" style="font-family: var(--font-heading); font-size: 1.3rem; color: var(--neon-gold);">$49 (PKR 13,500)</strong>
+        </div>
+
+        <label class="form-label">Select Payment Method:</label>
+        <!-- Dynamic Payment Tabs (JazzCash, EasyPaisa, Binance, etc.) -->
+        <div class="payment-methods-tabs" id="paymentTabs"></div>
+
+        <!-- Selected Account Details Box -->
+        <div class="account-details-box" id="paymentDetailsBox"></div>
+
+        <!-- Purchase Order Form -->
+        <form id="purchaseOrderForm">
+          <div class="form-group">
+            <label class="form-label" for="userContactNumber">
+              Your Contact Number (WhatsApp / Telegram) *
+            </label>
+            <input type="text" id="userContactNumber" class="form-input" placeholder="e.g. 03001234567 or @telegram_handle" required />
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+              Admin will send your VIP Password & PineScript access details directly to this number.
+            </div>
+          </div>
+
+          <!-- Screenshot Upload Zone -->
+          <div class="form-group">
+            <label class="form-label">Upload Payment Screenshot / Receipt *</label>
+            <div class="upload-dropzone" id="screenshotDropzone">
+              <input type="file" id="screenshotFileInput" accept="image/*" style="display: none;" />
+              <div class="dropzone-text">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--neon-cyan); margin-bottom: 8px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <div style="font-size: 0.9rem; font-weight: 600;">Click to browse or Drag & Drop screenshot</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Supports PNG, JPG, JPEG</div>
+              </div>
+              <img id="screenshotPreview" class="upload-preview-img" alt="Screenshot preview" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="userOrderNotes">Order Notes / TradingView Username (Optional)</label>
+            <input type="text" id="userOrderNotes" class="form-input" placeholder="e.g. TradingView username for invite access" />
+          </div>
+
+          <button type="submit" class="btn-buy-gold" style="width: 100%;">
+            Submit Payment Proof
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       UNLOCK VIA PREMIUM LICENSE KEY MODAL
+       ========================================================================== -->
+  <div class="modal-overlay" id="unlockKeyModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Unlock VIP Script</h3>
+        <button type="button" class="modal-close-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 16px;">
+          Enter the VIP Password / License Key provided to your WhatsApp by the Administrator.
+        </p>
+        <div class="form-group">
+          <label class="form-label" for="unlockKeyInput">VIP Password / License Key:</label>
+          <input type="text" id="unlockKeyInput" class="form-input" placeholder="e.g. APEX-VIP-778899" autocomplete="off" />
+        </div>
+        <button type="button" class="btn-primary" id="btnSubmitUnlockKey" style="width: 100%; justify-content: center; padding: 12px;">
+          Verify & Unlock Script
+        </button>
+        <div id="unlockResultBox" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Logic -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>

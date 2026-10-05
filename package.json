@@ -1,0 +1,23 @@
+{
+  "name": "tradingstore-platform",
+  "version": "3.0.0",
+  "description": "TradingStore - TradingView Scripts, Trading Bots, Books, Courses, and VIP Sales Gateway with Admin Panel",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 3000",
+    "start": "python -m http.server 3000",
+    "serve": "npx serve ."
+  },
+  "keywords": [
+    "tradingstore",
+    "tradingview",
+    "pinescript",
+    "trading-bots",
+    "trading-books",
+    "courses",
+    "admin-panel",
+    "vercel"
+  ],
+  "author": "TradingStore",
+  "license": "MIT"
+}

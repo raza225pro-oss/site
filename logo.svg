@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60" fill="none">
+  <defs>
+    <linearGradient id="neonGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f298" />
+      <stop offset="100%" stop-color="#00b8ff" />
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd700" />
+      <stop offset="100%" stop-color="#ff8800" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Icon Emblem -->
+  <g transform="translate(6, 6)">
+    <!-- Hexagonal Glow Frame -->
+    <polygon points="24,2 44,14 44,34 24,46 4,34 4,14" fill="#0d1424" stroke="url(#neonGreen)" stroke-width="2" filter="url(#glow)"/>
+    
+    <!-- Candlestick Graphic -->
+    <!-- Candle 1 (Bullish) -->
+    <line x1="16" y1="12" x2="16" y2="36" stroke="#00f298" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="13.5" y="16" width="5" height="14" rx="1.5" fill="#00f298" />
+    
+    <!-- Candle 2 (High Bullish) -->
+    <line x1="24" y1="8" x2="24" y2="40" stroke="#00b8ff" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="21.5" y="12" width="5" height="18" rx="1.5" fill="#00b8ff" />
+    
+    <!-- Candle 3 (Peak) -->
+    <line x1="32" y1="14" x2="32" y2="34" stroke="#00f298" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="29.5" y="18" width="5" height="10" rx="1.5" fill="#00f298" />
+    
+    <!-- Pulse dot -->
+    <circle cx="24" cy="8" r="2.5" fill="#00f298" filter="url(#glow)"/>
+  </g>
+  
+  <!-- Text Brand -->
+  <text x="60" y="32" font-family="'Outfit', 'Inter', -apple-system, sans-serif" font-weight="800" font-size="19" fill="#ffffff" letter-spacing="1.2">
+    TRADING<tspan fill="url(#neonGreen)">STORE</tspan>
+  </text>
+  <text x="61" y="46" font-family="'Inter', sans-serif" font-weight="600" font-size="8.5" fill="#6c7f93" letter-spacing="2.2">
+    SCRIPTS • BOTS • ACADEMY
+  </text>
+</svg>
