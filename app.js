@@ -377,12 +377,25 @@ class TradingStoreApp {
     `).join('');
   }
 
-  // --- 4. RENDER PREMIUM HUB ---
+  // --- 4. RENDER PREMIUM HUB (UNIFIED VIP PAGE UNLOCK) ---
   renderPremium() {
     const container = document.getElementById('premiumGrid');
+    const lockCard = document.getElementById('premiumLockCard');
+    const unlockedBar = document.getElementById('premiumUnlockedBar');
     if (!container) return;
 
+    const isUnlocked = store.isPremiumPageUnlocked();
     const items = store.getPremium();
+
+    if (lockCard && unlockedBar) {
+      if (isUnlocked) {
+        lockCard.style.display = 'none';
+        unlockedBar.style.display = 'flex';
+      } else {
+        lockCard.style.display = 'block';
+        unlockedBar.style.display = 'none';
+      }
+    }
 
     if (items.length === 0) {
       container.innerHTML = `
@@ -392,46 +405,90 @@ class TradingStoreApp {
       return;
     }
 
-    container.innerHTML = items.map(prem => `
-      <div class="premium-card">
-        <div class="premium-card-header">
-          <span class="premium-tag">★ VIP ALGORITHM</span>
-          <h3 class="card-title" style="font-size: 1.4rem;">${sanitize(prem.title)}</h3>
-          <p style="color: var(--text-secondary); font-size: 0.9rem;">${sanitize(prem.tagline || '')}</p>
-          <div class="pricing-box">
-            <span class="price-usd">$${sanitize(prem.priceUSD || 49)}</span>
-            <span class="price-pkr">/ PKR ${prem.pricePKR ? prem.pricePKR.toLocaleString() : '13,500'}</span>
-            ${prem.winRate ? `<span class="card-winrate" style="margin-left: auto;">Win: ${sanitize(prem.winRate)}</span>` : ''}
+    container.innerHTML = items.map(prem => {
+      const scriptUrl = sanitize(prem.scriptLink || 'https://www.tradingview.com');
+
+      if (isUnlocked) {
+        // UNLOCKED STATE: Full access to private script and setup
+        return `
+          <div class="premium-card unlocked-card">
+            <div class="premium-card-header">
+              <span class="premium-tag unlocked">✓ VIP ACCESS ACTIVE</span>
+              <h3 class="card-title" style="font-size: 1.4rem;">${sanitize(prem.title)}</h3>
+              <p style="color: var(--text-secondary); font-size: 0.9rem;">${sanitize(prem.tagline || '')}</p>
+              <div class="pricing-box">
+                <span class="unlocked-status-pill">👑 Full License Granted</span>
+                ${prem.winRate ? `<span class="card-winrate" style="margin-left: auto;">Win: ${sanitize(prem.winRate)}</span>` : ''}
+              </div>
+            </div>
+
+            <ul class="premium-features-list">
+              ${(prem.features || []).map(f => `
+                <li>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  ${sanitize(f)}
+                </li>
+              `).join('')}
+            </ul>
+
+            <div class="premium-card-actions">
+              <a href="${scriptUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; text-decoration: none;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                Open / Add to TradingView
+              </a>
+            </div>
           </div>
-        </div>
+        `;
+      } else {
+        // LOCKED STATE: Preview and purchase / enter key
+        return `
+          <div class="premium-card">
+            <div class="premium-card-header">
+              <span class="premium-tag">★ VIP ALGORITHM</span>
+              <h3 class="card-title" style="font-size: 1.4rem;">${sanitize(prem.title)}</h3>
+              <p style="color: var(--text-secondary); font-size: 0.9rem;">${sanitize(prem.tagline || '')}</p>
+              <div class="pricing-box">
+                <span class="price-usd">$${sanitize(prem.priceUSD || 49)}</span>
+                <span class="price-pkr">/ PKR ${prem.pricePKR ? prem.pricePKR.toLocaleString() : '13,500'}</span>
+                ${prem.winRate ? `<span class="card-winrate" style="margin-left: auto;">Win: ${sanitize(prem.winRate)}</span>` : ''}
+              </div>
+            </div>
 
-        <ul class="premium-features-list">
-          ${(prem.features || []).map(f => `
-            <li>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              ${sanitize(f)}
-            </li>
-          `).join('')}
-        </ul>
+            <ul class="premium-features-list">
+              ${(prem.features || []).map(f => `
+                <li>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  ${sanitize(f)}
+                </li>
+              `).join('')}
+            </ul>
 
-        <div class="premium-card-actions">
-          <button class="btn-buy-gold" data-action="purchase" data-id="${sanitize(prem.id)}">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-            Buy Now / Send Payment Proof
-          </button>
-          <button class="btn-unlock-key" data-action="unlock" data-id="${sanitize(prem.id)}">
-            Already have VIP Password? Unlock Here
-          </button>
-        </div>
-      </div>
-    `).join('');
+            <div class="premium-card-actions">
+              <button class="btn-buy-gold" data-action="purchase" data-id="${sanitize(prem.id)}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Buy VIP Access / Send Proof
+              </button>
+              <button class="btn-unlock-key" data-action="focus-key">
+                Already have VIP Password? Enter Key Above ⬆
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
 
-    // Attach event listeners safely (no inline onclick)
+    // Attach event listeners safely
     container.querySelectorAll('[data-action="purchase"]').forEach(btn => {
       btn.addEventListener('click', () => this.openPurchaseModal(btn.dataset.id));
     });
-    container.querySelectorAll('[data-action="unlock"]').forEach(btn => {
-      btn.addEventListener('click', () => this.openUnlockModal(btn.dataset.id));
+    container.querySelectorAll('[data-action="focus-key"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById('inputVipPageKey');
+        if (input) {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          input.focus();
+        }
+      });
     });
   }
 
@@ -780,7 +837,54 @@ class TradingStoreApp {
       });
     }
 
-    // Unlock Key Form
+    // VIP Page Single Key Unlock Form
+    const vipPageForm = document.getElementById('formVipPageKeyUnlock');
+    if (vipPageForm) {
+      vipPageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('inputVipPageKey');
+        const alertBox = document.getElementById('vipPageKeyAlert');
+        const key = input ? input.value.trim() : '';
+        if (!key) return;
+
+        const res = store.verifyPremiumKey(key);
+        if (res.success) {
+          if (alertBox) { alertBox.style.display = 'none'; }
+          this.showToast("👑 VIP Suite Unlocked Successfully!", "success");
+          this.renderPremium();
+        } else {
+          if (alertBox) {
+            alertBox.style.display = 'block';
+            alertBox.style.background = 'rgba(255, 59, 105, 0.12)';
+            alertBox.style.border = '1px solid var(--neon-bear)';
+            alertBox.style.color = '#ff6b8b';
+            alertBox.innerText = "❌ Ghalat VIP Password / Key! Meharbani farma kr sahi key likhein ya WhatsApp par support se rabta karein.";
+          }
+        }
+      });
+    }
+
+    // VIP Page Relock Button
+    const relockBtn = document.getElementById('btnRelockPremium');
+    if (relockBtn) {
+      relockBtn.addEventListener('click', () => {
+        store.setPremiumPageUnlocked(false);
+        this.showToast("VIP Page Locked.", "info");
+        this.renderPremium();
+      });
+    }
+
+    // Open VIP Purchase Modal Button
+    const openVipBuyBtn = document.getElementById('btnOpenVipPurchaseModal');
+    if (openVipBuyBtn) {
+      openVipBuyBtn.addEventListener('click', () => {
+        const premList = store.getPremium();
+        const defaultProduct = premList[0] || { id: 'vip_suite', title: 'TradingStore VIP Suite', priceUSD: 49, pricePKR: 13500 };
+        this.openPurchaseModal(defaultProduct.id);
+      });
+    }
+
+    // Unlock Key Modal (from script modal or legacy trigger)
     const unlockBtn = document.getElementById('btnSubmitUnlockKey');
     if (unlockBtn) {
       unlockBtn.addEventListener('click', () => this.submitPremiumKeyUnlock());

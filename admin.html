@@ -89,7 +89,7 @@
 
         <button type="button" class="nav-item-btn" data-section="premiumKeys">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-2-2l2 2m0 0l-7.5 7.5a4.5 4.5 0 1 0 3 3L22 7l-2-2-2 2z"></path></svg>
-          <span>VIP Keys</span>
+          <span>VIP Premium Keys</span>
         </button>
 
         <button type="button" class="nav-item-btn" data-section="payments">
@@ -117,10 +117,18 @@
       </div>
     </aside>
 
+    <!-- Mobile Backdrop -->
+    <div class="sidebar-backdrop" id="adminSidebarBackdrop"></div>
+
     <!-- Main Content Area -->
     <main class="admin-main">
       <header class="admin-topbar">
-        <h2 class="topbar-title" id="adminTopbarTitle">Executive Overview</h2>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" class="btn-sidebar-toggle" id="btnAdminMobileNavToggle" aria-label="Toggle Navigation">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <h2 class="topbar-title" id="adminTopbarTitle">Executive Overview</h2>
+        </div>
         <div class="topbar-right">
           <a href="index.html" target="_blank" class="btn-view-site">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
@@ -392,28 +400,22 @@
         </section>
 
         <!-- ==================================================================
-             SECTION 7: PREMIUM SCRIPT KEYS
+             SECTION 7: PREMIUM VIP PAGE PASSWORDS (UNIFIED)
              ================================================================== -->
         <section id="section-premiumKeys" class="admin-section">
           <!-- Create Premium Key Box -->
           <div class="panel-card" style="padding: 24px; margin-bottom: 24px;">
-            <h3 style="font-family: var(--font-head); margin-bottom: 8px;">Issue New VIP Script License Key</h3>
+            <h3 style="font-family: var(--font-head); margin-bottom: 8px;">Issue VIP Premium Password (Full Page Access)</h3>
             <p style="color: var(--text-dim); font-size: 0.88rem; margin-bottom: 16px;">
-              Create separate unlock passwords for paid customers who purchase VIP scripts.
+              Create VIP unlock passwords for paid customers. Entering this password unlocks the <strong>ENTIRE VIP Premium Page</strong> on the customer's device, giving them access to all private indicators and PineScript systems.
             </p>
             <form id="formNewPremiumKey" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 12px; align-items: flex-end;">
               <div>
                 <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">VIP Password / Key *</label>
-                <input type="text" id="newPremKeyVal" class="form-input" placeholder="e.g. APEX-VIP-8899" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Target Script</label>
-                <select id="newPremKeyScript" style="width:100%; padding:10px; border-radius:6px; background:#0d1322; border:1px solid var(--admin-border); color:#fff;">
-                  <option value="all">All VIP Scripts</option>
-                  <option value="prem_1">PRO ALGO APEX</option>
-                  <option value="prem_2">QUANTUM SMC VIP</option>
-                </select>
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" id="newPremKeyVal" class="form-input" placeholder="e.g. VIP-APEX-8899" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                  <button type="button" id="btnGenRandomPremKey" class="btn-sm-view" title="Generate random VIP key">⚡</button>
+                </div>
               </div>
 
               <div>
@@ -421,8 +423,13 @@
                 <input type="text" id="newPremKeyCustomer" class="form-input" placeholder="03001234567" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
+              <div>
+                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Note / Customer Name</label>
+                <input type="text" id="newPremKeyNote" class="form-input" placeholder="e.g. Usman VIP Pass" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+              </div>
+
               <button type="submit" class="btn-sm-edit" style="height: 42px; padding: 0 20px;">
-                + Issue Key
+                + Issue VIP Key
               </button>
             </form>
           </div>
@@ -430,16 +437,16 @@
           <!-- Existing Keys Table -->
           <div class="panel-card">
             <div class="panel-header">
-              <h3>Issued VIP Script Keys</h3>
+              <h3>Active VIP Premium Passwords (Full Page Access)</h3>
             </div>
             <div class="table-responsive">
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>VIP Key</th>
+                    <th>VIP Password</th>
                     <th>Customer Contact</th>
-                    <th>Target Script</th>
-                    <th>Unlocked</th>
+                    <th>Note</th>
+                    <th>Times Unlocked</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>

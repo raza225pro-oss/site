@@ -437,35 +437,63 @@ class AdminPanel {
     });
   }
 
-  // --- 7. PREMIUM SCRIPT KEYS ---
+  // --- 7. PREMIUM VIP PAGE PASSWORDS (UNIFIED FULL PAGE ACCESS) ---
   renderPremiumKeysTable() {
     const tbody = document.getElementById('premiumKeysTableBody');
     if (!tbody) return;
 
     const list = store.getPremiumPasswords();
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No premium keys issued. Click "Issue Key".</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No VIP passwords issued yet.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = list.map(k => `
-      <tr>
-        <td><strong style="font-family:var(--font-code); color:var(--admin-gold);">${sanitize(k.key)}</strong></td>
-        <td>${sanitize(k.assignedTo || 'Direct Customer')}</td>
-        <td>${k.targetScriptId === 'all' ? 'All Scripts' : 'VIP Script'}</td>
-        <td>${k.unlockedCount || 0} times</td>
-        <td><span class="badge-tag active">${sanitize(k.status).toUpperCase()}</span></td>
-        <td>
-          <div class="action-btn-group">
-            <button class="btn-sm-edit" data-action="copy-key" data-key="${sanitize(k.key)}">Copy Key</button>
-            <button class="btn-sm-del" data-action="delete-prem-key" data-id="${sanitize(k.id)}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = list.map(k => {
+      const cleanContact = (k.assignedTo || '').replace(/[^0-9]/g, '');
+      const waLink = cleanContact ? `https://wa.me/${cleanContact}` : '';
+
+      return `
+        <tr>
+          <td><strong style="font-family:var(--font-code); color:var(--admin-gold); font-size:1.05rem;">${sanitize(k.key)}</strong></td>
+          <td>
+            ${k.assignedTo ? `
+              <div><strong>${sanitize(k.assignedTo)}</strong></div>
+              ${cleanContact ? `<a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">💬 WhatsApp</a>` : ''}
+            ` : '<span style="color:var(--text-dim);">-</span>'}
+          </td>
+          <td>${sanitize(k.note || 'Full VIP Suite')}</td>
+          <td>${k.unlockedCount || 0} times</td>
+          <td>
+            <span class="badge-tag ${k.status === 'active' ? 'active' : 'rejected'}">
+              ${sanitize(k.status || 'active').toUpperCase()}
+            </span>
+          </td>
+          <td>
+            <div class="action-btn-group">
+              <button class="btn-sm-edit" data-action="copy-key" data-key="${sanitize(k.key)}">Copy</button>
+              <button class="btn-sm-view" data-action="toggle-prem-key" data-id="${sanitize(k.id)}" title="Toggle Active / Inactive">
+                ${k.status === 'active' ? 'Revoke' : 'Activate'}
+              </button>
+              <button class="btn-sm-del" data-action="delete-prem-key" data-id="${sanitize(k.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     tbody.querySelectorAll('[data-action="copy-key"]').forEach(btn => {
       btn.addEventListener('click', () => this.copyText(btn.dataset.key));
+    });
+    tbody.querySelectorAll('[data-action="toggle-prem-key"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = store.getPremiumPasswords().find(p => p.id === btn.dataset.id);
+        if (item) {
+          item.status = item.status === 'active' ? 'inactive' : 'active';
+          store.savePremiumPassword(item);
+          this.renderPremiumKeysTable();
+          this.showToast(`VIP Password status: ${item.status}`, "info");
+        }
+      });
     });
     tbody.querySelectorAll('[data-action="delete-prem-key"]').forEach(btn => {
       btn.addEventListener('click', () => this.deletePremiumKey(btn.dataset.id));
@@ -600,11 +628,11 @@ class AdminPanel {
     // Generate random VIP Key
     const randomKey = 'VIP-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
     
-    // Save to premium passwords
+    // Save to premium passwords (unlocks entire VIP suite)
     store.savePremiumPassword({
       key: randomKey,
-      targetScriptId: order.productId || 'all',
       assignedTo: order.contactNumber,
+      note: `${order.productTitle} (${order.id})`,
       status: 'active'
     });
 
@@ -613,7 +641,7 @@ class AdminPanel {
 
     // Pre-fill WhatsApp message for admin convenience
     const cleanNum = order.contactNumber.replace(/[^0-9]/g, '');
-    const msg = encodeURIComponent(`Assalam-o-Alaikum! Aap ka TradingStore payment proof verify ho gya hai.\n\nAap ka VIP Script Access Password: *${randomKey}*\n\nWebsite par VIP Script page par ja kar 'Unlock with Key' me ye password dalein aur TradingView script access karein.\nShukriya!`);
+    const msg = encodeURIComponent(`Assalam-o-Alaikum! Aap ka TradingStore VIP payment proof verify ho gya hai.\n\nAap ka VIP Access Password: *${randomKey}*\n\nWebsite par VIP Premium tab par ja kar ye password enter karein aur tamam private TradingView scripts aur systems unlock karein!\nShukriya!`);
     
     const waUrl = `https://wa.me/${cleanNum}?text=${msg}`;
 
@@ -1331,26 +1359,62 @@ class AdminPanel {
       });
     }
 
-    // Create Premium Key Form
+    // Generate Random VIP Key Helper
+    const genPremKeyBtn = document.getElementById('btnGenRandomPremKey');
+    if (genPremKeyBtn) {
+      genPremKeyBtn.addEventListener('click', () => {
+        const input = document.getElementById('newPremKeyVal');
+        if (input) {
+          input.value = 'VIP-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+        }
+      });
+    }
+
+    // Create Premium Key Form (Full Page Access)
     const newPremKeyForm = document.getElementById('formNewPremiumKey');
     if (newPremKeyForm) {
       newPremKeyForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const key = document.getElementById('newPremKeyVal').value.trim();
-        const scriptId = document.getElementById('newPremKeyScript').value;
         const customer = document.getElementById('newPremKeyCustomer').value.trim();
+        const note = document.getElementById('newPremKeyNote')?.value.trim() || '';
 
         if (!key) return alert("Key is required!");
         store.savePremiumPassword({
           key: key,
-          targetScriptId: scriptId,
           assignedTo: customer,
+          note: note,
           status: 'active'
         });
 
-        this.showToast("VIP Premium Key created!", "success");
+        this.showToast("VIP Premium Password created (Full Page Access)!", "success");
         newPremKeyForm.reset();
         this.renderPremiumKeysTable();
+      });
+    }
+
+    // Mobile Sidebar Drawer Toggle
+    const mobileToggle = document.getElementById('btnAdminMobileNavToggle');
+    const adminSidebar = document.querySelector('.admin-sidebar');
+    const adminBackdrop = document.getElementById('adminSidebarBackdrop');
+
+    if (mobileToggle && adminSidebar && adminBackdrop) {
+      mobileToggle.addEventListener('click', () => {
+        adminSidebar.classList.toggle('mobile-open');
+        adminBackdrop.classList.toggle('active');
+      });
+
+      adminBackdrop.addEventListener('click', () => {
+        adminSidebar.classList.remove('mobile-open');
+        adminBackdrop.classList.remove('active');
+      });
+
+      // Close mobile drawer on nav item click
+      document.querySelectorAll('.nav-item-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          adminSidebar.classList.remove('mobile-open');
+          adminBackdrop.classList.remove('active');
+        });
       });
     }
 

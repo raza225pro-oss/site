@@ -324,7 +324,7 @@ class DataStore {
     return { success: true, target, newRegistration: true };
   }
 
-  // --- PREMIUM SCRIPT KEYS ---
+  // --- PREMIUM VIP PAGE PASSWORDS (UNIFIED: UNLOCKS ENTIRE VIP SUITE) ---
   getPremiumPasswords() { return this.getLocal('premiumPasswords', []); }
   savePremiumPassword(keyObj) {
     const list = this.getPremiumPasswords();
@@ -347,12 +347,16 @@ class DataStore {
     this.setLocal('premiumPasswords', list);
   }
 
-  verifyPremiumKey(inputKey, scriptId) {
+  /**
+   * Validates VIP Key to unlock the ENTIRE Premium VIP page.
+   * One key unlocks all VIP scripts and resources on the page.
+   */
+  verifyPremiumKey(inputKey) {
     if (!inputKey) return { success: false, reason: "EMPTY_KEY" };
     const cleanKey = inputKey.trim().toUpperCase();
     const list = this.getPremiumPasswords();
     
-    const found = list.find(k => k.key.trim().toUpperCase() === cleanKey);
+    const found = list.find(k => k.key && k.key.trim().toUpperCase() === cleanKey);
     if (!found) {
       return { success: false, reason: "INVALID_KEY" };
     }
@@ -361,15 +365,35 @@ class DataStore {
       return { success: false, reason: "KEY_REVOKED" };
     }
 
-    if (found.targetScriptId && found.targetScriptId !== 'all' && scriptId && found.targetScriptId !== scriptId) {
-      return { success: false, reason: "KEY_FOR_DIFFERENT_SCRIPT" };
-    }
-
     found.unlockedCount = (found.unlockedCount || 0) + 1;
     found.lastUsedAt = new Date().toISOString();
     this.setLocal('premiumPasswords', list);
 
+    // Save unlock status locally
+    this.setPremiumPageUnlocked(true, cleanKey);
+
     return { success: true, keyData: found };
+  }
+
+  isPremiumPageUnlocked() {
+    try {
+      return localStorage.getItem('tradingstore_premium_unlocked') === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  setPremiumPageUnlocked(status, activeKey = '') {
+    try {
+      if (status) {
+        localStorage.setItem('tradingstore_premium_unlocked', 'true');
+        if (activeKey) localStorage.setItem('tradingstore_premium_active_key', activeKey);
+      } else {
+        localStorage.removeItem('tradingstore_premium_unlocked');
+        localStorage.removeItem('tradingstore_premium_active_key');
+      }
+    } catch (e) {}
+    this.notifyListeners();
   }
 
   // --- ORDERS & PAYMENT PROOF SUBMISSIONS ---

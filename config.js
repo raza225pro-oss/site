@@ -329,15 +329,14 @@ export const SEED_DATA = {
     }
   ],
 
-  // Premium Script Unlock Passwords (issued by Admin after payment)
+  // Premium VIP Passwords (issued by Admin after payment, unlocks entire VIP section)
   premiumPasswords: [
     {
       id: "prem_key_1",
-      key: "APEX-VIP-778899",
-      targetScriptId: "prem_1",
+      key: "VIP-778899",
       assignedTo: "03009988776",
+      note: "Full VIP Suite Access",
       unlockedCount: 0,
-      maxUses: 1,
       status: "active",
       createdAt: "2026-03-10"
     }

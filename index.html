@@ -63,14 +63,6 @@
           <span class="vip-badge-tag">VIP</span>
         </button>
       </nav>
-
-      <!-- Action Right -->
-      <div class="header-actions">
-        <a href="admin.html" class="btn-admin-link" title="Open Admin Command Center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
-          Admin Portal
-        </a>
-      </div>
     </div>
   </header>
 
@@ -156,14 +148,53 @@
          PAGE 4: PREMIUM VIP HUB (SALES WITH MANUAL PAYMENT & KEY UNLOCK)
          ========================================================================== -->
     <section id="page-premium" class="content-page">
-      <div class="premium-vip-hero">
+      <!-- VIP Locked Banner / Unlock Form (Shown if not yet unlocked) -->
+      <div id="premiumLockCard" class="premium-lock-banner">
+        <div class="lock-icon-wrap">👑</div>
         <span class="premium-tag">★ PRIVATE INVITE-ONLY ACCESS</span>
         <h2 class="premium-title">VIP TradingView Algorithmic Systems</h2>
-        <p style="color: var(--text-secondary); max-width: 720px; font-size: 1.05rem; line-height: 1.6;">
-          Our private indicator scripts are backed by quantitative backtesting. Purchase via JazzCash, EasyPaisa, Binance USDT, or Bank Transfer, submit payment screenshot, and receive your VIP License Key directly.
+        <p style="color: var(--text-secondary); max-width: 680px; font-size: 1rem; line-height: 1.6; margin: 0 auto 24px;">
+          Exclusive quantitative PineScript v5 suites, non-repainting scalp triggers, and private alerts. Enter your VIP License Key to unlock the entire premium catalog, or purchase VIP access below.
         </p>
+
+        <!-- Single VIP Key Entry Box -->
+        <div class="vip-unlock-form-box">
+          <form id="formVipPageKeyUnlock" style="display: flex; gap: 10px; max-width: 520px; margin: 0 auto; flex-wrap: wrap;">
+            <input type="text" id="inputVipPageKey" class="form-input" placeholder="Enter VIP License Key (e.g. VIP-778899)" style="flex: 1; min-width: 220px;" autocomplete="off" required />
+            <button type="submit" class="btn-primary" style="padding: 12px 24px; white-space: nowrap;">
+              Unlock VIP Page
+            </button>
+          </form>
+          <div id="vipPageKeyAlert" style="display: none; margin-top: 14px; border-radius: 8px; padding: 10px 16px; font-size: 0.88rem;"></div>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Don't have a VIP License Key yet?</span>
+          <button type="button" class="btn-buy-gold" id="btnOpenVipPurchaseModal" style="padding: 10px 20px; font-size: 0.85rem;">
+            Buy VIP Access / Submit Proof
+          </button>
+        </div>
       </div>
 
+      <!-- VIP Unlocked Status Bar (Shown once unlocked) -->
+      <div id="premiumUnlockedBar" class="premium-unlocked-banner" style="display: none;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="font-size: 1.6rem;">👑</span>
+          <div>
+            <h3 style="color: var(--neon-bull); font-family: var(--font-heading); font-size: 1.15rem; margin: 0;">
+              VIP Access Active • Full Suite Unlocked
+            </h3>
+            <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 2px 0 0;">
+              You have unrestricted access to all private indicators, invite scripts, and setups.
+            </p>
+          </div>
+        </div>
+        <button type="button" id="btnRelockPremium" class="btn-relock" title="Relock premium page">
+          🔒 Relock
+        </button>
+      </div>
+
+      <!-- Premium Items Grid -->
       <div class="premium-grid" id="premiumGrid">
         <!-- Rendered dynamically by app.js -->
       </div>
@@ -180,7 +211,6 @@
         <a href="#books" onclick="window.tradexApp.switchTab('books')">Trading Books</a>
         <a href="#courses" onclick="window.tradexApp.switchTab('courses')">Courses</a>
         <a href="#premium" onclick="window.tradexApp.switchTab('premium')">VIP Premium</a>
-        <a href="admin.html">Admin Panel</a>
       </div>
       <p class="footer-copy">
         &copy; 2026 <span id="footerAppName">TradingStore</span>. All Rights Reserved. Built for high-frequency traders and quantitative analysts.
