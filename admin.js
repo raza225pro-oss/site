@@ -845,15 +845,24 @@ class AdminPanel {
   // --- SETTINGS & BRANDING ---
   renderSettingsForm() {
     const settings = store.getSiteSettings();
+    const gkConfig = store.getGatekeeperConfig();
 
     const appNameInput = document.getElementById('settingsAppName');
     const taglineInput = document.getElementById('settingsTagline');
     const logoUrlInput = document.getElementById('settingsLogoUrl');
+    const waNumInput = document.getElementById('settingsWhatsAppNumber');
+    const currInput = document.getElementById('settingsCurrency');
+    const usdToPkrInput = document.getElementById('settingsUsdToPkr');
+    const gkModeInput = document.getElementById('settingsGatekeeperMode');
     const adminNewUser = document.getElementById('adminNewUsername');
 
     if (appNameInput) appNameInput.value = settings.appName || 'TradingStore';
     if (taglineInput) taglineInput.value = settings.tagline || '';
     if (logoUrlInput) logoUrlInput.value = settings.logoUrl || '';
+    if (waNumInput) waNumInput.value = settings.whatsappSupportNumber || '923001234567';
+    if (currInput) currInput.value = (settings.currency || 'USD').toUpperCase();
+    if (usdToPkrInput) usdToPkrInput.value = settings.usdToPkrRate || 280;
+    if (gkModeInput) gkModeInput.value = gkConfig.mode || 'soft';
     if (adminNewUser) adminNewUser.value = settings.adminUsername || 'admin';
 
     // Clear password inputs
@@ -866,19 +875,34 @@ class AdminPanel {
   }
 
   saveSettingsFromForm() {
-    const appName = document.getElementById('settingsAppName').value.trim();
-    const tagline = document.getElementById('settingsTagline').value.trim();
-    const logoUrl = document.getElementById('settingsLogoUrl').value.trim();
+    const appName = document.getElementById('settingsAppName')?.value.trim();
+    const tagline = document.getElementById('settingsTagline')?.value.trim();
+    const logoUrl = document.getElementById('settingsLogoUrl')?.value.trim();
+    const waNum = document.getElementById('settingsWhatsAppNumber')?.value.trim() || '923001234567';
+    const curr = document.getElementById('settingsCurrency')?.value || 'USD';
+    const usdToPkr = parseFloat(document.getElementById('settingsUsdToPkr')?.value) || 280;
+    const gkMode = document.getElementById('settingsGatekeeperMode')?.value || 'soft';
 
     const current = store.getSiteSettings();
     store.saveSiteSettings({
       ...current,
       appName: appName || "TradingStore",
       tagline: tagline || "TradingView Scripts & Academy",
-      logoUrl: logoUrl
+      logoUrl: logoUrl,
+      whatsappSupportNumber: waNum,
+      currency: curr,
+      usdToPkrRate: usdToPkr
     });
 
-    this.showToast("Branding settings saved successfully!", "success");
+    const currentGk = store.getGatekeeperConfig();
+    store.saveGatekeeperConfig({
+      ...currentGk,
+      mode: gkMode,
+      guestBrowsingAllowed: gkMode === 'soft' || gkMode === 'disabled',
+      enabled: gkMode !== 'disabled'
+    });
+
+    this.showToast("Branding, WhatsApp and security settings saved successfully!", "success");
   }
 
   saveAdminCredentials() {
@@ -954,6 +978,145 @@ class AdminPanel {
     return true;
   }
 
+  // --- IMAGE UPLOADER COMPONENT HELPER ---
+  renderImagePickerControl(inputId, currentVal, label, hint, presets = []) {
+    const safeVal = sanitize(currentVal || '');
+    const displayImg = safeVal || 'logo.svg';
+
+    return `
+      <div class="form-group">
+        <label class="form-label">${label}</label>
+        <div class="image-uploader-control" id="${inputId}_wrap">
+          <div class="image-preview-row">
+            <div class="image-preview-thumb">
+              <img id="${inputId}_preview" src="${displayImg}" alt="Preview" onerror="this.src='logo.svg'" />
+            </div>
+            <div class="image-preview-meta">
+              <div class="image-preview-status" id="${inputId}_status">
+                ${safeVal ? '✓ Active Image Selected' : 'Standard Logo Active'}
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-dim);">
+                Phone gallery / PC se photo select karein ya neeche direct link paste karein.
+              </div>
+              <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
+                <button type="button" class="btn-file-picker" id="${inputId}_btn_file">
+                  📁 Device / Gallery Se Pick Karein
+                </button>
+                <button type="button" class="btn-sm-view" id="${inputId}_btn_clear" style="padding:6px 12px; font-size:0.75rem;">
+                  Clear
+                </button>
+              </div>
+              <input type="file" id="${inputId}_file" accept="image/*" style="display:none;" />
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size:0.75rem; color:var(--text-dim); display:block; margin-bottom:4px;">
+              Image Web Link (URL) ya Auto-Loaded Base64:
+            </label>
+            <input type="text" id="${inputId}" class="form-input" 
+              placeholder="https://... ya uper diye gaye button se direct image upload karein" 
+              value="${safeVal}" />
+          </div>
+
+          ${presets && presets.length > 0 ? `
+            <div>
+              <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:4px;">
+                Curated Presets (1-Click Select):
+              </div>
+              <div class="preset-pills-wrap">
+                ${presets.map(p => {
+                  const labelText = p.title || p.label || 'Preset';
+                  return `
+                    <button type="button" class="preset-pill-btn" data-target="${inputId}" data-url="${sanitize(p.url)}" title="${sanitize(labelText)}">
+                      ${sanitize(labelText)}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${hint ? `<div class="form-hint">${hint}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  bindImagePickerEvents(inputId) {
+    const wrap = document.getElementById(`${inputId}_wrap`);
+    if (!wrap) return;
+
+    const fileInput = document.getElementById(`${inputId}_file`);
+    const fileBtn = document.getElementById(`${inputId}_btn_file`);
+    const clearBtn = document.getElementById(`${inputId}_btn_clear`);
+    const textInput = document.getElementById(inputId);
+    const previewImg = document.getElementById(`${inputId}_preview`);
+    const statusEl = document.getElementById(`${inputId}_status`);
+
+    // File picker click
+    if (fileBtn && fileInput) {
+      fileBtn.addEventListener('click', () => fileInput.click());
+    }
+
+    // Read selected file as base64
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          alert("Sirf image files (PNG, JPG, JPEG, WEBP) select karein.");
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          alert("Image file size maximum 5MB honi chahiye.");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target.result;
+          if (textInput) textInput.value = base64;
+          if (previewImg) previewImg.src = base64;
+          if (statusEl) statusEl.innerText = "✓ Device Photo Uploaded!";
+          this.showToast("Image loaded from device successfully!", "success");
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Text input manual typing / paste
+    if (textInput) {
+      textInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        if (previewImg) previewImg.src = val || 'logo.svg';
+        if (statusEl) statusEl.innerText = val ? "✓ Custom URL Loaded" : "Standard Logo Active";
+      });
+    }
+
+    // Clear / Reset image
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (textInput) textInput.value = '';
+        if (fileInput) fileInput.value = '';
+        if (previewImg) previewImg.src = 'logo.svg';
+        if (statusEl) statusEl.innerText = "Standard Logo Active";
+      });
+    }
+
+    // Preset pills click
+    wrap.querySelectorAll('.preset-pill-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetUrl = btn.dataset.url;
+        if (textInput) textInput.value = targetUrl;
+        if (previewImg) previewImg.src = targetUrl;
+        if (statusEl) statusEl.innerText = `✓ Preset: ${btn.innerText}`;
+      });
+    });
+  }
+
   // --- GENERIC CRUD MODAL CONTROLLER ---
   openAddModal(type) {
     this.activeModalType = type;
@@ -989,172 +1152,367 @@ class AdminPanel {
     const body = document.getElementById('adminModalDynamicBody');
     const item = this.editingItem;
     const isEdit = !!item;
+    const presets = store.getCuratedPresets();
 
     if (modal) modal.classList.add('active');
 
     if (type === 'bot') {
-      title.innerText = isEdit ? "Edit TradingView Bot / Script" : "Add New TradingView Bot / Script";
+      title.innerText = isEdit ? "Edit TradingView Bot / Indicator" : "Add New TradingView Bot / Indicator";
+      const currentFeatures = (item?.features || ["Non-Repainting Signals", "Dynamic Stop Loss & Take Profit", "TradingView Alert Ready"]).join('\n');
+
       body.innerHTML = `
         <div class="form-group">
-          <label class="form-label">Script Title *</label>
-          <input type="text" id="m_bot_title" class="form-input" required placeholder="e.g. Apex Scalper v2" value="${isEdit ? sanitize(item.title) : ''}" />
+          <label class="form-label">Indicator / Bot Title *</label>
+          <input type="text" id="m_bot_title" class="form-input" required 
+            placeholder="e.g. Apex Scalper v4 Pro (TradingView Indicator)" 
+            value="${isEdit ? sanitize(item.title) : ''}" />
+          <div class="form-hint">Display title that appears in customer catalog and search results.</div>
         </div>
+
         <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label class="form-label">Market</label>
-            <input type="text" id="m_bot_market" class="form-input" placeholder="Crypto, Forex, Gold" value="${isEdit ? sanitize(item.market || '') : ''}" />
+            <label class="form-label">Category</label>
+            <select id="m_bot_cat" class="form-input">
+              <option value="scalping" ${isEdit && item.category === 'scalping' ? 'selected' : ''}>Scalping</option>
+              <option value="smc" ${isEdit && item.category === 'smc' ? 'selected' : ''}>Smart Money Concepts (SMC)</option>
+              <option value="swing" ${isEdit && item.category === 'swing' ? 'selected' : ''}>Swing Trading</option>
+              <option value="priceaction" ${isEdit && item.category === 'priceaction' ? 'selected' : ''}>Price Action</option>
+            </select>
           </div>
           <div>
-            <label class="form-label">Timeframe</label>
-            <input type="text" id="m_bot_tf" class="form-input" placeholder="1m - 5m - 15m" value="${isEdit ? sanitize(item.timeframe || '') : ''}" />
+            <label class="form-label">Display Badge / Tag</label>
+            <input type="text" id="m_bot_badge" class="form-input" 
+              placeholder="e.g. 🔥 HOT or Scalping Beast or New" 
+              value="${isEdit ? sanitize(item.badge || '') : '🔥 Top Rated'}" />
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">TradingView Script Link *</label>
-          <input type="url" id="m_bot_link" class="form-input" required placeholder="https://www.tradingview.com/script/..." value="${isEdit ? sanitize(item.tradingViewLink || '') : ''}" />
+
+        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="form-label">Target Markets</label>
+            <input type="text" id="m_bot_market" class="form-input" 
+              placeholder="e.g. Crypto & Forex (BTC, ETH, Gold, EURUSD)" 
+              value="${isEdit ? sanitize(item.market || '') : 'Crypto, Forex & Gold'}" />
+          </div>
+          <div>
+            <label class="form-label">Recommended Timeframes</label>
+            <input type="text" id="m_bot_tf" class="form-input" 
+              placeholder="e.g. 1m, 5m, 15m (Scalping & Intraday)" 
+              value="${isEdit ? sanitize(item.timeframe || '') : '1m - 5m - 15m'}" />
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Logo / Image URL</label>
-          <input type="url" id="m_bot_logo" class="form-input" placeholder="https://..." value="${isEdit ? sanitize(item.logo || '') : ''}" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea id="m_bot_desc" class="form-input" rows="3" placeholder="Explain the strategy and signals...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
-        </div>
+
         <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
             <label class="form-label">Win Rate %</label>
-            <input type="text" id="m_bot_win" class="form-input" placeholder="e.g. 78.5%" value="${isEdit ? sanitize(item.winRate || '') : ''}" />
+            <input type="text" id="m_bot_win" class="form-input" 
+              placeholder="e.g. 84.5% Backtested" 
+              value="${isEdit ? sanitize(item.winRate || '') : '82.5%'}" />
           </div>
           <div>
-            <label class="form-label">Access Type</label>
+            <label class="form-label">Access Model</label>
             <select id="m_bot_isFree" class="form-input">
-              <option value="true" ${isEdit && item.isFree ? 'selected' : ''}>Free Script</option>
-              <option value="false" ${isEdit && !item.isFree ? 'selected' : ''}>VIP Algo</option>
+              <option value="true" ${!isEdit || item.isFree ? 'selected' : ''}>Free Script (Direct TradingView Access)</option>
+              <option value="false" ${isEdit && !item.isFree ? 'selected' : ''}>VIP Premium Algo (Requires License)</option>
             </select>
           </div>
         </div>
+
+        <div class="form-group">
+          <label class="form-label">TradingView Script URL *</label>
+          <input type="url" id="m_bot_link" class="form-input" required 
+            placeholder="https://www.tradingview.com/script/xyz-apex-scalper/" 
+            value="${isEdit ? sanitize(item.tradingViewLink || '') : ''}" />
+          <div class="form-hint">Customer clicking 'Open TradingView' will be redirected to this link.</div>
+        </div>
+
+        ${this.renderImagePickerControl(
+          'm_bot_logo', 
+          isEdit ? item.logo : '', 
+          'Indicator Logo / Thumbnail *', 
+          'Select from your mobile/laptop gallery, paste an image URL, or choose a curated chart preset.',
+          presets
+        )}
+
+        <div class="form-group">
+          <label class="form-label">Core Features & Signals (1 Feature per line)</label>
+          <textarea id="m_bot_features" class="form-input" rows="3" 
+            placeholder="Har line me aik feature likhein:&#10;Non-Repainting Real-Time Buy/Sell Signals&#10;Automated Dynamic Stop Loss & Take Profit Levels&#10;Mobile Notification & Sound Alerts">${sanitize(currentFeatures)}</textarea>
+          <div class="form-hint">Har line website par alag bullet point / badge ban kar show hogi.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Strategy Overview & Rules</label>
+          <textarea id="m_bot_desc" class="form-input" rows="3" 
+            placeholder="Strategy k rules, entry criteria, aur confirmation indicators explain karein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
+        </div>
       `;
+
+      this.bindImagePickerEvents('m_bot_logo');
+
     } else if (type === 'book') {
       title.innerText = isEdit ? "Edit Trading Book / PDF" : "Add New Trading Book / PDF";
       body.innerHTML = `
         <div class="form-group">
           <label class="form-label">Book Title *</label>
-          <input type="text" id="m_book_title" class="form-input" required placeholder="e.g. Price Action Secrets" value="${isEdit ? sanitize(item.title) : ''}" />
+          <input type="text" id="m_book_title" class="form-input" required 
+            placeholder="e.g. Price Action Secrets & Candlestick Bible (Urdu/English)" 
+            value="${isEdit ? sanitize(item.title) : ''}" />
         </div>
+
         <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label class="form-label">Author</label>
-            <input type="text" id="m_book_author" class="form-input" placeholder="Author name" value="${isEdit ? sanitize(item.author || '') : ''}" />
+            <label class="form-label">Author / Creator</label>
+            <input type="text" id="m_book_author" class="form-input" 
+              placeholder="e.g. Senior Market Technician" 
+              value="${isEdit ? sanitize(item.author || '') : 'Senior Market Technician'}" />
           </div>
           <div>
-            <label class="form-label">Pages / Length</label>
-            <input type="text" id="m_book_pages" class="form-input" placeholder="e.g. 180 Pages" value="${isEdit ? sanitize(item.pages || '') : ''}" />
+            <label class="form-label">Pages / Volume</label>
+            <input type="text" id="m_book_pages" class="form-input" 
+              placeholder="e.g. 185 Pages (High-Definition PDF)" 
+              value="${isEdit ? sanitize(item.pages || '') : '180 Pages'}" />
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">PDF / Download Drive Link *</label>
-          <input type="url" id="m_book_link" class="form-input" required placeholder="https://drive.google.com/..." value="${isEdit ? sanitize(item.downloadLink || '') : ''}" />
+
+        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="form-label">Rating</label>
+            <input type="text" id="m_book_rating" class="form-input" 
+              placeholder="e.g. 4.9 / 5.0" 
+              value="${isEdit ? sanitize(item.rating || '') : '4.9 / 5.0'}" />
+          </div>
+          <div>
+            <label class="form-label">Category</label>
+            <input type="text" id="m_book_cat" class="form-input" 
+              placeholder="e.g. Price Action, Psychology, SMC" 
+              value="${isEdit ? sanitize(item.category || '') : 'Price Action'}" />
+          </div>
         </div>
+
         <div class="form-group">
-          <label class="form-label">Cover Image URL</label>
-          <input type="url" id="m_book_cover" class="form-input" placeholder="https://..." value="${isEdit ? sanitize(item.cover || '') : ''}" />
+          <label class="form-label">PDF Download / Google Drive Link *</label>
+          <input type="url" id="m_book_link" class="form-input" required 
+            placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
+            value="${isEdit ? sanitize(item.downloadLink || '') : ''}" />
+          <div class="form-hint">Ensure Google Drive file permission is set to 'Anyone with the link can view'.</div>
         </div>
+
+        ${this.renderImagePickerControl(
+          'm_book_cover', 
+          isEdit ? item.cover : '', 
+          'Book Cover Image *', 
+          'Upload book cover image from your mobile gallery or choose a preset below.',
+          presets
+        )}
+
         <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea id="m_book_desc" class="form-input" rows="3">${isEdit ? sanitize(item.description || '') : ''}</textarea>
+          <label class="form-label">Book Summary & Overview</label>
+          <textarea id="m_book_desc" class="form-input" rows="3" 
+            placeholder="Kitab k topics (SMC, Wyckoff, Order Blocks, Liquidity Sweeps) detail se likhein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
         </div>
       `;
+
+      this.bindImagePickerEvents('m_book_cover');
+
     } else if (type === 'course') {
-      title.innerText = isEdit ? "Edit Trading Course" : "Add New Trading Course";
+      title.innerText = isEdit ? "Edit Trading Mentorship Course" : "Add New Trading Mentorship Course";
       body.innerHTML = `
         <div class="form-group">
           <label class="form-label">Course Title *</label>
-          <input type="text" id="m_course_title" class="form-input" required placeholder="e.g. ICT Mentorship 2026" value="${isEdit ? sanitize(item.title) : ''}" />
+          <input type="text" id="m_course_title" class="form-input" required 
+            placeholder="e.g. Institutional ICT & Smart Money Masterclass 2026" 
+            value="${isEdit ? sanitize(item.title) : ''}" />
         </div>
+
         <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label class="form-label">Mentor</label>
-            <input type="text" id="m_course_inst" class="form-input" placeholder="e.g. Master Trader" value="${isEdit ? sanitize(item.instructor || '') : ''}" />
+            <label class="form-label">Instructor / Mentor</label>
+            <input type="text" id="m_course_inst" class="form-input" 
+              placeholder="e.g. Senior Quantitative Mentor" 
+              value="${isEdit ? sanitize(item.instructor || '') : 'Senior Quantitative Mentor'}" />
           </div>
           <div>
-            <label class="form-label">Duration</label>
-            <input type="text" id="m_course_dur" class="form-input" placeholder="e.g. 15 Hours" value="${isEdit ? sanitize(item.duration || '') : ''}" />
+            <label class="form-label">Duration / Video Length</label>
+            <input type="text" id="m_course_dur" class="form-input" 
+              placeholder="e.g. 18 Hours (Full Video Series)" 
+              value="${isEdit ? sanitize(item.duration || '') : '16 Hours'}" />
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Video / Playlist Access Link *</label>
-          <input type="url" id="m_course_link" class="form-input" required placeholder="https://..." value="${isEdit ? sanitize(item.accessLink || '') : ''}" />
+
+        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="form-label">Skill Level</label>
+            <select id="m_course_lvl" class="form-input">
+              <option value="All Levels" ${!isEdit || item.level === 'All Levels' ? 'selected' : ''}>All Levels (Zero to Hero)</option>
+              <option value="Beginner" ${isEdit && item.level === 'Beginner' ? 'selected' : ''}>Beginner</option>
+              <option value="Advanced" ${isEdit && item.level === 'Advanced' ? 'selected' : ''}>Advanced / Institutional</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Badge</label>
+            <input type="text" id="m_course_badge" class="form-input" 
+              placeholder="e.g. 🎓 Complete Masterclass" 
+              value="${isEdit ? sanitize(item.badge || '') : '🎓 Complete Masterclass'}" />
+          </div>
         </div>
+
         <div class="form-group">
-          <label class="form-label">Thumbnail URL</label>
-          <input type="url" id="m_course_thumb" class="form-input" placeholder="https://..." value="${isEdit ? sanitize(item.thumbnail || '') : ''}" />
+          <label class="form-label">Video Access Link / Playlist URL *</label>
+          <input type="url" id="m_course_link" class="form-input" required 
+            placeholder="https://youtube.com/playlist?list=... ya Google Drive video folder link" 
+            value="${isEdit ? sanitize(item.accessLink || '') : ''}" />
+          <div class="form-hint">YouTube Playlist, Google Drive Video Folder ya private hosting link.</div>
         </div>
+
+        ${this.renderImagePickerControl(
+          'm_course_thumb', 
+          isEdit ? item.thumbnail : '', 
+          'Course Thumbnail Image *', 
+          'Upload course thumbnail banner from mobile or laptop or choose a preset.',
+          presets
+        )}
+
         <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea id="m_course_desc" class="form-input" rows="3">${isEdit ? sanitize(item.description || '') : ''}</textarea>
+          <label class="form-label">Course Description & Syllabus</label>
+          <textarea id="m_course_desc" class="form-input" rows="3" 
+            placeholder="Course syllabus, strategy breakdown, aur students k liye learning path detail karein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
         </div>
       `;
+
+      this.bindImagePickerEvents('m_course_thumb');
+
     } else if (type === 'premium') {
-      title.innerText = isEdit ? "Edit VIP Premium Script" : "Add New VIP Premium Script";
+      title.innerText = isEdit ? "Edit VIP Premium Script / Suite" : "Add New VIP Premium Script / Suite";
+      const currentFeatures = (item?.features || [
+        "Private Invite-Only PineScript Access",
+        "Non-Repainting Multi-Confluence Algorithm",
+        "Automated Dynamic Risk-Reward Levels",
+        "Lifetime Access & VIP WhatsApp Support"
+      ]).join('\n');
+
       body.innerHTML = `
         <div class="form-group">
-          <label class="form-label">VIP Script Title *</label>
-          <input type="text" id="m_prem_title" class="form-input" required placeholder="e.g. APEX ALGO VIP" value="${isEdit ? sanitize(item.title) : ''}" />
+          <label class="form-label">VIP Algorithm Title *</label>
+          <input type="text" id="m_prem_title" class="form-input" required 
+            placeholder="e.g. APEX ALGO VIP - Institutional Suite (Invite-Only)" 
+            value="${isEdit ? sanitize(item.title) : ''}" />
         </div>
+
         <div class="form-group">
-          <label class="form-label">Tagline</label>
-          <input type="text" id="m_prem_tagline" class="form-input" placeholder="e.g. Institutional Confluence Matrix" value="${isEdit ? sanitize(item.tagline || '') : ''}" />
+          <label class="form-label">Product Tagline</label>
+          <input type="text" id="m_prem_tagline" class="form-input" 
+            placeholder="e.g. Automated Multi-Confluence Engine with Proprietary Order Flow" 
+            value="${isEdit ? sanitize(item.tagline || '') : ''}" />
         </div>
+
         <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
           <div>
-            <label class="form-label">Price (USD) *</label>
-            <input type="number" id="m_prem_usd" class="form-input" required placeholder="49" value="${isEdit ? item.priceUSD || '' : ''}" />
+            <label class="form-label">Price in USD ($) *</label>
+            <input type="number" id="m_prem_usd" class="form-input" required 
+              placeholder="49" 
+              value="${isEdit ? item.priceUSD || '' : '49'}" />
           </div>
           <div>
-            <label class="form-label">Price (PKR) *</label>
-            <input type="number" id="m_prem_pkr" class="form-input" required placeholder="13500" value="${isEdit ? item.pricePKR || '' : ''}" />
+            <label class="form-label">Price in PKR (₨) *</label>
+            <input type="number" id="m_prem_pkr" class="form-input" required 
+              placeholder="13500" 
+              value="${isEdit ? item.pricePKR || '' : '13500'}" />
           </div>
         </div>
+
+        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label class="form-label">Backtested Win Rate %</label>
+            <input type="text" id="m_prem_win" class="form-input" 
+              placeholder="e.g. 88.5% Verified" 
+              value="${isEdit ? sanitize(item.winRate || '') : '88.5%'}" />
+          </div>
+          <div>
+            <label class="form-label">License Key Protection</label>
+            <select id="m_prem_req_key" class="form-input">
+              <option value="true" selected>Protected by VIP Key (Customer receives key on payment)</option>
+            </select>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">TradingView Private Invite Link *</label>
-          <input type="url" id="m_prem_link" class="form-input" required placeholder="https://www.tradingview.com/script/..." value="${isEdit ? sanitize(item.scriptLink || '') : ''}" />
+          <input type="url" id="m_prem_link" class="form-input" required 
+            placeholder="https://www.tradingview.com/script/... (Private Invite link)" 
+            value="${isEdit ? sanitize(item.scriptLink || '') : ''}" />
+          <div class="form-hint">This link is revealed ONLY when the customer verifies their VIP Password key.</div>
         </div>
+
+        ${this.renderImagePickerControl(
+          'm_prem_banner', 
+          isEdit ? item.banner : '', 
+          'VIP Product Banner / Mockup *', 
+          'Upload screenshot of chart or high-res algorithm banner.',
+          presets
+        )}
+
         <div class="form-group">
-          <label class="form-label">Banner Image URL</label>
-          <input type="url" id="m_prem_banner" class="form-input" placeholder="https://..." value="${isEdit ? sanitize(item.banner || '') : ''}" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Win Rate %</label>
-          <input type="text" id="m_prem_win" class="form-input" placeholder="e.g. 86.4%" value="${isEdit ? sanitize(item.winRate || '') : ''}" />
+          <label class="form-label">VIP Feature List (1 Feature per line)</label>
+          <textarea id="m_prem_features" class="form-input" rows="4" 
+            placeholder="Har line me aik VIP feature likhein:&#10;Private Invite-Only PineScript Access&#10;Zero Repaint Algorithm with Confluence Filters&#10;Lifetime Access & VIP WhatsApp Support">${sanitize(currentFeatures)}</textarea>
+          <div class="form-hint">Har line customer k samne green checkmark feature ban kr display hogi.</div>
         </div>
       `;
+
+      this.bindImagePickerEvents('m_prem_banner');
+
     } else if (type === 'payment') {
       title.innerText = isEdit ? "Edit Payment Method" : "Add Payment Method";
       body.innerHTML = `
         <div class="form-group">
-          <label class="form-label">Platform Name * (e.g. JazzCash, EasyPaisa, Binance TRC20, Bank)</label>
-          <input type="text" id="m_pay_platform" class="form-input" required placeholder="JazzCash" value="${isEdit ? sanitize(item.platform) : ''}" />
+          <label class="form-label">Payment Platform Name *</label>
+          <input type="text" id="m_pay_platform" class="form-input" required 
+            placeholder="e.g. JazzCash, EasyPaisa, Binance Pay (USDT TRC20), Nayapay, Bank Alfalah" 
+            value="${isEdit ? sanitize(item.platform) : ''}" />
         </div>
+
         <div class="form-group">
           <label class="form-label">Account Number / Wallet Address *</label>
-          <input type="text" id="m_pay_number" class="form-input" required placeholder="03001234567" value="${isEdit ? sanitize(item.accountNumber) : ''}" />
+          <input type="text" id="m_pay_number" class="form-input" required 
+            placeholder="e.g. 03001234567 ya TRC20 Wallet Address" 
+            value="${isEdit ? sanitize(item.accountNumber) : ''}" />
+          <div class="form-hint">Customer can click 'Copy' to copy this number instantly.</div>
         </div>
+
         <div class="form-group">
-          <label class="form-label">Account Title / Username (OPTIONAL - If empty, hidden from buyers!)</label>
-          <input type="text" id="m_pay_title" class="form-input" placeholder="Muhammad Raza" value="${isEdit ? sanitize(item.accountTitle || '') : ''}" />
+          <label class="form-label">Account Title / Beneficiary Name (Optional)</label>
+          <input type="text" id="m_pay_title" class="form-input" 
+            placeholder="e.g. Muhammad Raza (Customer ko confirm krny k liye)" 
+            value="${isEdit ? sanitize(item.accountTitle || '') : ''}" />
         </div>
+
         <div class="form-group">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="m_pay_show_title" ${isEdit ? (item.showTitle ? 'checked' : '') : 'checked'} />
-            <span style="font-size:0.85rem;">Show Account Title to Buyers (uncheck to hide completely)</span>
+            <input type="checkbox" id="m_pay_show_title" ${!isEdit || item.showTitle ? 'checked' : ''} style="accent-color: var(--admin-accent); width:18px; height:18px;" />
+            <span style="font-size:0.85rem; color:#fff;">
+              <strong>Show Account Title to Buyers</strong> (Uncheck to hide title completely)
+            </span>
           </label>
         </div>
+
+        ${this.renderImagePickerControl(
+          'm_pay_qr', 
+          isEdit ? item.qrCode : '', 
+          'Payment QR Code Image (Optional)', 
+          'Upload your JazzCash/EasyPaisa/Binance QR Code screenshot from mobile gallery so customers can scan and pay.',
+          []
+        )}
+
         <div class="form-group">
-          <label class="form-label">Instructions / Payment Note</label>
-          <textarea id="m_pay_instr" class="form-input" rows="2" placeholder="Send payment and attach screenshot...">${isEdit ? sanitize(item.instructions || '') : ''}</textarea>
+          <label class="form-label">Payment Instructions for Buyers</label>
+          <textarea id="m_pay_instr" class="form-input" rows="2" 
+            placeholder="e.g. Payment send krny k bad screenshot WhatsApp par attach karein. 10 minute k andar VIP password provide kr diya jaye ga.">${isEdit ? sanitize(item.instructions || '') : ''}</textarea>
         </div>
       `;
+
+      this.bindImagePickerEvents('m_pay_qr');
+
     } else if (type === 'socialLink') {
       title.innerText = isEdit ? "Edit Channel Link" : "Add New Channel Link";
       body.innerHTML = `
@@ -1194,81 +1552,109 @@ class AdminPanel {
 
     if (type === 'bot') {
       const title = document.getElementById('m_bot_title')?.value.trim();
-      if (!title) return alert("Title is required!");
+      if (!title) return alert("Bot / Indicator title is required!");
+
+      const featuresRaw = document.getElementById('m_bot_features')?.value || '';
+      const features = featuresRaw
+        .split('\n')
+        .map(s => s.trim().replace(/^[-*•]\s*/, ''))
+        .filter(Boolean);
+
       store.saveBot({
         id: this.editingItem ? this.editingItem.id : undefined,
         title: title,
-        market: document.getElementById('m_bot_market')?.value.trim() || 'Crypto / Forex',
+        category: document.getElementById('m_bot_cat')?.value || 'scalping',
+        badge: document.getElementById('m_bot_badge')?.value.trim() || '🔥 Top Rated',
+        market: document.getElementById('m_bot_market')?.value.trim() || 'Crypto, Forex & Gold',
         timeframe: document.getElementById('m_bot_tf')?.value.trim() || 'All Timeframes',
-        tradingViewLink: document.getElementById('m_bot_link')?.value.trim() || '#',
-        logo: document.getElementById('m_bot_logo')?.value.trim() || 'assets/logo.svg',
-        description: document.getElementById('m_bot_desc')?.value.trim() || '',
-        winRate: document.getElementById('m_bot_win')?.value.trim() || '78%',
+        winRate: document.getElementById('m_bot_win')?.value.trim() || '80%',
         isFree: document.getElementById('m_bot_isFree')?.value === 'true',
-        badge: this.editingItem ? (this.editingItem.badge || 'Updated') : 'New',
-        category: this.editingItem ? this.editingItem.category : 'scalping',
-        features: this.editingItem ? this.editingItem.features : ["Custom Signal Engine", "Non-Repainting"]
+        tradingViewLink: document.getElementById('m_bot_link')?.value.trim() || '#',
+        logo: document.getElementById('m_bot_logo')?.value.trim() || 'logo.svg',
+        features: features.length > 0 ? features : ["Non-Repainting Signals", "TradingView Alert Ready"],
+        description: document.getElementById('m_bot_desc')?.value.trim() || 'Professional quantitative TradingView script.'
       });
+
     } else if (type === 'book') {
       const title = document.getElementById('m_book_title')?.value.trim();
-      if (!title) return alert("Title is required!");
+      if (!title) return alert("Book title is required!");
+
       store.saveBook({
         id: this.editingItem ? this.editingItem.id : undefined,
         title: title,
-        author: document.getElementById('m_book_author')?.value.trim() || 'Pro Trader',
+        author: document.getElementById('m_book_author')?.value.trim() || 'Senior Trader',
         pages: document.getElementById('m_book_pages')?.value.trim() || '150 Pages',
+        rating: document.getElementById('m_book_rating')?.value.trim() || '4.9 / 5.0',
+        category: document.getElementById('m_book_cat')?.value.trim() || 'Trading',
         downloadLink: document.getElementById('m_book_link')?.value.trim() || '#',
-        cover: document.getElementById('m_book_cover')?.value.trim() || 'assets/logo.svg',
-        description: document.getElementById('m_book_desc')?.value.trim() || '',
-        category: this.editingItem ? this.editingItem.category : 'Trading',
-        fileType: this.editingItem ? this.editingItem.fileType : 'PDF eBook',
-        rating: this.editingItem ? this.editingItem.rating : '4.5 / 5.0'
+        cover: document.getElementById('m_book_cover')?.value.trim() || 'logo.svg',
+        description: document.getElementById('m_book_desc')?.value.trim() || 'Essential trading guide and playbook.',
+        fileType: 'PDF eBook'
       });
+
     } else if (type === 'course') {
       const title = document.getElementById('m_course_title')?.value.trim();
-      if (!title) return alert("Title is required!");
+      if (!title) return alert("Course title is required!");
+
       store.saveCourse({
         id: this.editingItem ? this.editingItem.id : undefined,
         title: title,
         instructor: document.getElementById('m_course_inst')?.value.trim() || 'Senior Mentor',
         duration: document.getElementById('m_course_dur')?.value.trim() || '10 Hours',
+        level: document.getElementById('m_course_lvl')?.value || 'All Levels',
+        badge: document.getElementById('m_course_badge')?.value.trim() || '🎓 Masterclass',
         accessLink: document.getElementById('m_course_link')?.value.trim() || '#',
-        thumbnail: document.getElementById('m_course_thumb')?.value.trim() || 'assets/logo.svg',
-        description: document.getElementById('m_course_desc')?.value.trim() || '',
-        level: this.editingItem ? this.editingItem.level : 'All Levels',
-        badge: this.editingItem ? this.editingItem.badge : 'New'
+        thumbnail: document.getElementById('m_course_thumb')?.value.trim() || 'logo.svg',
+        description: document.getElementById('m_course_desc')?.value.trim() || 'Comprehensive trading educational curriculum.'
       });
+
     } else if (type === 'premium') {
       const title = document.getElementById('m_prem_title')?.value.trim();
-      if (!title) return alert("Title is required!");
+      if (!title) return alert("VIP algorithm title is required!");
+
+      const featuresRaw = document.getElementById('m_prem_features')?.value || '';
+      const features = featuresRaw
+        .split('\n')
+        .map(s => s.trim().replace(/^[-*•]\s*/, ''))
+        .filter(Boolean);
+
       store.savePremium({
         id: this.editingItem ? this.editingItem.id : undefined,
         title: title,
-        tagline: document.getElementById('m_prem_tagline')?.value.trim() || '',
+        tagline: document.getElementById('m_prem_tagline')?.value.trim() || 'Next-Gen Quantitative Suite',
         priceUSD: parseFloat(document.getElementById('m_prem_usd')?.value) || 49,
         pricePKR: parseFloat(document.getElementById('m_prem_pkr')?.value) || 13500,
+        winRate: document.getElementById('m_prem_win')?.value.trim() || '88%',
         scriptLink: document.getElementById('m_prem_link')?.value.trim() || '#',
-        banner: document.getElementById('m_prem_banner')?.value.trim() || 'assets/logo.svg',
-        winRate: document.getElementById('m_prem_win')?.value.trim() || '85%',
-        features: this.editingItem ? this.editingItem.features : ["Invite-Only PineScript Access", "Non-Repainting Signals", "Direct VIP Telegram Access"],
+        banner: document.getElementById('m_prem_banner')?.value.trim() || 'logo.svg',
+        features: features.length > 0 ? features : [
+          "Private Invite-Only PineScript Access",
+          "Zero Repaint Algorithm with Confluence Filters",
+          "Lifetime Access & VIP WhatsApp Support"
+        ],
         requiresKey: true
       });
+
     } else if (type === 'payment') {
       const platform = document.getElementById('m_pay_platform')?.value.trim();
       const num = document.getElementById('m_pay_number')?.value.trim();
       const title = document.getElementById('m_pay_title')?.value.trim();
       const showTitle = document.getElementById('m_pay_show_title')?.checked;
+      const qrCode = document.getElementById('m_pay_qr')?.value.trim() || '';
 
-      if (!platform || !num) return alert("Platform and Account Number are required!");
+      if (!platform || !num) return alert("Platform Name and Account Number are required!");
+
       store.savePaymentMethod({
         id: this.editingItem ? this.editingItem.id : undefined,
         platform: platform,
         accountNumber: num,
         accountTitle: title,
-        showTitle: showTitle && title ? true : false,
+        showTitle: !!(showTitle && title),
+        qrCode: qrCode,
         instructions: document.getElementById('m_pay_instr')?.value.trim() || '',
         active: true
       });
+
     } else if (type === 'socialLink') {
       const platform = document.getElementById('m_social_platform')?.value;
       const title = document.getElementById('m_social_title')?.value.trim();
@@ -1276,6 +1662,7 @@ class AdminPanel {
       const active = document.getElementById('m_social_active')?.checked;
 
       if (!title || !url) return alert("Title and Channel URL are required!");
+
       store.saveSocialLink({
         id: this.editingItem ? this.editingItem.id : undefined,
         platform: platform || 'telegram',
@@ -1286,7 +1673,7 @@ class AdminPanel {
     }
 
     this.closeModals();
-    this.showToast("Saved successfully!", "success");
+    this.showToast("Item saved successfully with all custom settings!", "success");
     this.renderCurrentSection();
   }
 

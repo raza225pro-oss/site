@@ -37,14 +37,26 @@ export class Gatekeeper {
    */
   isEnabled() {
     const config = store.getGatekeeperConfig();
-    return config && config.enabled !== false;
+    return config && config.enabled !== false && config.mode !== 'disabled';
   }
 
   /**
    * Checks if this device currently has an authorized, active session
+   * If mode is "soft" or user chose guest mode, allows normal catalog viewing.
    */
   isAuthorized() {
     if (!this.isEnabled()) return true;
+
+    const config = store.getGatekeeperConfig();
+    // In soft mode (default), free catalog is open to all visitors without popup interruption
+    if (!config || config.mode === 'soft' || !config.mode) {
+      return true;
+    }
+
+    // Check if user clicked "Browse as Guest"
+    if (sessionStorage.getItem('tradingstore_guest_browse') === 'true') {
+      return true;
+    }
 
     try {
       const authData = localStorage.getItem(this.sessionKey);
@@ -58,6 +70,16 @@ export class Gatekeeper {
     } catch (e) {
       return false;
     }
+  }
+
+  /**
+   * Allow user to browse catalog as guest without popup irritation
+   */
+  grantGuestAccess() {
+    try {
+      sessionStorage.setItem('tradingstore_guest_browse', 'true');
+    } catch (e) {}
+    return true;
   }
 
   /**

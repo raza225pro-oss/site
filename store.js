@@ -519,9 +519,11 @@ class DataStore {
   getGatekeeperConfig() {
     return this.getLocal('gatekeeperConfig', APP_CONFIG.gatekeeperConfig || {
       enabled: true,
+      mode: "soft",
       socialVerificationRequired: true,
       passwordUnlockRequired: true,
-      minEngagementSeconds: 8
+      minEngagementSeconds: 8,
+      guestBrowsingAllowed: true
     });
   }
 
@@ -534,6 +536,9 @@ class DataStore {
       appName: APP_CONFIG.appName,
       tagline: APP_CONFIG.tagline,
       logoUrl: "",
+      whatsappSupportNumber: APP_CONFIG.whatsappSupportNumber || "923001234567",
+      currency: APP_CONFIG.currency || "USD",
+      usdToPkrRate: APP_CONFIG.usdToPkrRate || 280,
       adminPassword: APP_CONFIG.adminDefaults.passwordHash,
       adminUsername: APP_CONFIG.adminDefaults.username
     });
@@ -541,6 +546,10 @@ class DataStore {
 
   saveSiteSettings(settings) {
     this.setLocal('siteSettings', settings);
+  }
+
+  getCuratedPresets() {
+    return APP_CONFIG.imagePresets || [];
   }
 
   // Restore factory seed data

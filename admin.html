@@ -630,22 +630,53 @@
 
             <form id="siteSettingsForm">
               <div class="form-group" style="margin-bottom: 18px;">
-                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Site Name</label>
-                <input type="text" id="settingsAppName" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Site Name / Brand Title</label>
+                <input type="text" id="settingsAppName" class="form-input" placeholder="e.g. TradingStore Pro" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
               <div class="form-group" style="margin-bottom: 18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Site Tagline</label>
-                <input type="text" id="settingsTagline" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                <input type="text" id="settingsTagline" class="form-input" placeholder="e.g. Next-Gen Quantitative Trading Suite & Academy" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
-              <div class="form-group" style="margin-bottom: 24px;">
+              <div class="form-group" style="margin-bottom: 18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Logo Image URL (Leave blank to use default TradingStore SVG logo)</label>
                 <input type="text" id="settingsLogoUrl" class="form-input" placeholder="https://... or logo.svg" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
+              <div class="form-group" style="margin-bottom: 18px;">
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">WhatsApp Support Number (Orders & Inquiries) *</label>
+                <input type="text" id="settingsWhatsAppNumber" class="form-input" placeholder="e.g. 923001234567 (Country code k sath, '+' k bina)" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">
+                  💬 Customers clicking "Inquire on WhatsApp" or "Order via WhatsApp" will directly message this number.
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom: 18px;">
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Default Display Currency</label>
+                  <select id="settingsCurrency" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:#0d1322; border:1px solid var(--admin-border); color:#fff;">
+                    <option value="USD">USD ($ United States Dollar)</option>
+                    <option value="PKR">PKR (₨ Pakistani Rupee)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">USD to PKR Exchange Rate</label>
+                  <input type="number" id="settingsUsdToPkr" class="form-input" placeholder="280" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 24px;">
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Gatekeeper Visitor Entry Mode</label>
+                <select id="settingsGatekeeperMode" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:#0d1322; border:1px solid var(--admin-border); color:#fff;">
+                  <option value="soft">Soft Mode (Recommended - Visitors browse free catalog, VIP scripts protected)</option>
+                  <option value="strict">Strict Mode (Visitors must join channels or enter key before seeing site)</option>
+                  <option value="disabled">Disabled (No popup, direct open access)</option>
+                </select>
+              </div>
+
               <button type="submit" class="btn-sm-edit" style="padding:12px 28px; font-size:0.95rem;">
-                Save Branding Settings
+                Save Branding & Settings
               </button>
             </form>
           </div>
@@ -707,17 +738,17 @@
        GENERIC MODAL (FOR ADDING/EDITING BOTS, BOOKS, COURSES, VIP, PAYMENTS)
        ========================================================================== -->
   <div class="admin-modal-overlay" id="adminGenericModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(14px); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#0f172a; border:1px solid var(--admin-border); border-radius:var(--radius-lg); width:100%; max-width:600px; max-height:90vh; overflow-y:auto; padding:28px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; border-bottom:1px solid var(--admin-border); padding-bottom:12px;">
+    <div class="admin-modal-card">
+      <div class="admin-modal-header">
         <h3 id="adminModalTitle" style="font-family:var(--font-head); font-size:1.3rem;">Modal Title</h3>
         <button type="button" class="modal-close-btn" style="background:none; border:none; color:var(--text-dim); font-size:1.5rem; cursor:pointer;">&times;</button>
       </div>
 
-      <div id="adminModalDynamicBody"></div>
+      <div class="admin-modal-body" id="adminModalDynamicBody"></div>
 
-      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:24px; border-top:1px solid var(--admin-border); padding-top:16px;">
+      <div class="admin-modal-footer">
         <button type="button" class="btn-sm-view modal-close-btn">Cancel</button>
-        <button type="button" class="btn-sm-edit" onclick="window.adminPanel.saveGenericModal()" style="padding:10px 24px;">Save Item</button>
+        <button type="button" class="btn-sm-edit" id="btnAdminModalSaveGeneric" onclick="window.adminPanel.saveGenericModal()" style="padding:10px 24px;">Save Item</button>
       </div>
     </div>
   </div>

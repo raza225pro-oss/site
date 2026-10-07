@@ -49,6 +49,19 @@ class TradingStoreApp {
     this.activePaymentMethod = null;
     this.searchQuery = '';
     this.activeFilter = 'all';
+    this.currentSort = 'featured';
+    this.currentCurrency = (store.getSiteSettings().currency || 'USD').toUpperCase();
+
+    // Quantitative Terminal & Simulator State
+    this.soundEnabled = false;
+    this.chartSymbol = 'BTC/USDT';
+    this.chartTimeframe = '5m';
+    this.activeBotStrategy = 'Sniper Flow Scalper v4.2';
+    this.chartOverlays = { orderBlocks: true, signals: true, ema: true, tpSl: true };
+    this.candles = [];
+    this.chartHoverX = -1;
+    this.chartHoverY = -1;
+    this.priceDecimals = 2;
 
     this.init();
   }
@@ -61,10 +74,17 @@ class TradingStoreApp {
     // 2. Setup DOM Event Listeners
     this.bindEvents();
 
-    // 3. Render Brand & Header
+    // 3. Render Brand, Header & Currency
     this.renderBrandSettings();
+    this.updateCurrencyUI();
 
-    // 4. Initial Navigation and Render
+    // 4. Initialize Quantitative Simulator, Streamer, ROI Calculator & Pine Studio
+    this.initLiveChartStudio();
+    this.initSignalStreamer();
+    this.initRoiCalculator();
+    this.initPineStudio();
+
+    // 5. Initial Navigation and Render
     const hash = window.location.hash.replace('#', '') || 'bots';
     if (['bots', 'books', 'courses', 'premium'].includes(hash)) {
       this.switchTab(hash);
@@ -72,7 +92,7 @@ class TradingStoreApp {
       this.switchTab('bots');
     }
 
-    // 5. Subscribe to store changes (Real-time update)
+    // 6. Subscribe to store changes (Real-time update)
     store.subscribe(() => {
       this.renderBrandSettings();
       this.renderCurrentTab();
@@ -82,23 +102,62 @@ class TradingStoreApp {
     });
   }
 
+  // --- CURRENCY UTILITIES ---
+  toggleCurrency() {
+    this.currentCurrency = this.currentCurrency === 'USD' ? 'PKR' : 'USD';
+    this.updateCurrencyUI();
+    this.renderCurrentTab();
+    if (this.selectedProductForPurchase) {
+      this.updatePurchaseModalPrice();
+    }
+    this.updateRoiCalculator();
+    this.updatePriceHud();
+    this.showToast(`Currency switched to ${this.currentCurrency}`, "info");
+  }
+
+  updateCurrencyUI() {
+    const label = document.getElementById('headerCurrencyLabel');
+    const icon = document.querySelector('#btnToggleCurrency .curr-icon');
+    if (label) label.innerText = this.currentCurrency;
+    if (icon) icon.innerText = this.currentCurrency === 'PKR' ? '₨' : '$';
+  }
+
+  formatPrice(usd, pkr) {
+    if (this.currentCurrency === 'PKR') {
+      const val = pkr || Math.round((usd || 0) * 280);
+      return `PKR ${val.toLocaleString()}`;
+    }
+    return `$${usd || 0}`;
+  }
+
+  // --- WHATSAPP SUPPORT LINK BUILDER ---
+  getWhatsAppUrl(message = '') {
+    const settings = store.getSiteSettings();
+    const cleanNum = (settings.whatsappSupportNumber || '923001234567').replace(/[^0-9]/g, '');
+    const encoded = encodeURIComponent(message || 'Assalam-o-Alaikum! Mujhe TradingStore k bare me maloomat chahiye.');
+    return `https://wa.me/${cleanNum}?text=${encoded}`;
+  }
+
   // --- BRANDING & LOGO ---
   renderBrandSettings() {
     const settings = store.getSiteSettings();
     const logoImg = document.getElementById('headerLogoImg');
     const brandName = document.getElementById('headerBrandName');
     const footerAppName = document.getElementById('footerAppName');
+    const headerWa = document.getElementById('headerWaLink');
+    const floatingWa = document.getElementById('floatingWaBtn');
 
     if (brandName) brandName.innerText = settings.appName || "TradingStore";
     if (footerAppName) footerAppName.innerText = settings.appName || "TradingStore";
 
     if (logoImg) {
-      if (settings.logoUrl) {
-        logoImg.src = settings.logoUrl;
-      } else {
-        logoImg.src = "logo.svg";
-      }
+      logoImg.src = settings.logoUrl || "logo.svg";
     }
+
+    // Update WhatsApp Support links
+    const waUrl = this.getWhatsAppUrl("Assalam-o-Alaikum! TradingStore customer support please.");
+    if (headerWa) headerWa.href = waUrl;
+    if (floatingWa) floatingWa.href = waUrl;
   }
 
   // --- GATEKEEPER CHECK & MODAL CONTROLS ---
@@ -114,11 +173,6 @@ class TradingStoreApp {
     }
   }
 
-  /**
-   * Dynamically renders all active Gatekeeper Channel links
-   * Supports: 1 link, 2 links together ("dono aik sath"), 3 links ("ya 3 bi lga skoon"),
-   * or hiding any link ("aik hide kr skoon")!
-   */
   renderGatekeeperSocialLinks() {
     const container = document.getElementById('gateSocialLinksContainer');
     if (!container) return;
@@ -158,7 +212,6 @@ class TradingStoreApp {
       `;
     }).join('');
 
-    // Attach click listener for each dynamic link
     activeLinks.forEach(link => {
       const btn = document.getElementById(`gate_btn_${link.id}`);
       if (btn) {
@@ -170,7 +223,6 @@ class TradingStoreApp {
             badge.className = "status-badge verifying";
           }
 
-          // Stealth 8-second verification in background
           const minMs = gatekeeper.getMinEngagementMs();
           setTimeout(() => {
             const currentStatus = gatekeeper.getLinkStatus(link.id);
@@ -192,8 +244,11 @@ class TradingStoreApp {
     this.currentTab = tabName;
     window.location.hash = tabName;
 
-    // Update active nav button
+    // Update active nav button (desktop & mobile)
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.mobile-nav-item').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
 
@@ -202,11 +257,12 @@ class TradingStoreApp {
       page.classList.toggle('active', page.id === `page-${tabName}`);
     });
 
-    // Reset search & filters
+    // Reset search query
     this.searchQuery = '';
-    this.activeFilter = 'all';
     const searchInput = document.getElementById('catalogSearchInput');
+    const clearBtn = document.getElementById('btnClearSearch');
     if (searchInput) searchInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
 
     this.renderCurrentTab();
   }
@@ -228,6 +284,27 @@ class TradingStoreApp {
     }
   }
 
+  // --- SORTING HELPER ---
+  sortItems(items) {
+    const list = [...items];
+    switch (this.currentSort) {
+      case 'winrate':
+        return list.sort((a, b) => {
+          const rateA = parseFloat((a.winRate || '0').replace(/[^0-9.]/g, '')) || 0;
+          const rateB = parseFloat((b.winRate || '0').replace(/[^0-9.]/g, '')) || 0;
+          return rateB - rateA;
+        });
+      case 'popular':
+        return list.sort((a, b) => (b.badge ? 1 : 0) - (a.badge ? 1 : 0));
+      case 'newest':
+        return list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      case 'title':
+        return list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      default:
+        return list;
+    }
+  }
+
   // --- 1. RENDER BOTS HUB ---
   renderBots() {
     const container = document.getElementById('botsGrid');
@@ -246,43 +323,82 @@ class TradingStoreApp {
       items = items.filter(b => b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q) || (b.market || '').toLowerCase().includes(q));
     }
 
+    items = this.sortItems(items);
+
     if (items.length === 0) {
       container.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
-          <h3>No Bots found matching your search.</h3>
+          <h3>No Bots found matching your filter or search.</h3>
         </div>`;
       return;
     }
 
-    container.innerHTML = items.map(bot => `
-      <div class="card-item">
-        <div class="card-image-wrap">
-          <img src="${sanitize(bot.logo || 'logo.svg')}" alt="${sanitize(bot.title)}" loading="lazy" />
-          ${bot.badge ? `<span class="card-badge">${sanitize(bot.badge)}</span>` : ''}
-          ${bot.winRate ? `<span class="card-winrate">Win: ${sanitize(bot.winRate)}</span>` : ''}
+    container.innerHTML = items.map(bot => {
+      const waText = `Assalam-o-Alaikum! Mujhe TradingStore se "${bot.title}" indicator k bare me maloomat chahiye.`;
+      const waUrl = this.getWhatsAppUrl(waText);
+      const sparklineSvg = this.generateMiniSparklineSvg(bot.winRate || '78%');
+
+      return `
+        <div class="card-item" id="card_bot_${sanitize(bot.id)}">
+          <div class="card-image-wrap">
+            <img src="${sanitize(bot.logo || 'logo.svg')}" alt="${sanitize(bot.title)}" loading="lazy" onerror="this.src='logo.svg'" />
+            ${bot.badge ? `<span class="card-badge">🔥 ${sanitize(bot.badge)}</span>` : ''}
+            ${bot.winRate ? `<span class="card-winrate">Win: ${sanitize(bot.winRate)}</span>` : ''}
+            <div class="card-sparkline-wrap" title="Backtested Momentum">
+              ${sparklineSvg}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-meta-row">
+              <span>Market: <strong>${sanitize(bot.market || 'All')}</strong></span>
+              <span>TF: <strong>${sanitize(bot.timeframe || 'Multi')}</strong></span>
+            </div>
+            <h3 class="card-title">${sanitize(bot.title)}</h3>
+            <p class="card-desc">${sanitize(bot.description)}</p>
+            <div class="card-tags">
+              <span class="tag-pill" style="color:var(--neon-bull); border-color:rgba(0,242,152,0.3); font-weight:700;">⚡ No-Repaint v5</span>
+              ${(bot.features || []).slice(0, 2).map(f => `<span class="tag-pill">${sanitize(f)}</span>`).join('')}
+            </div>
+            <div class="card-actions-row">
+              <button type="button" class="btn-test-chart" data-action="test-chart" data-id="${sanitize(bot.id)}" title="Simulate this bot on live chart terminal above">
+                ⚡ Test on Chart
+              </button>
+              <button type="button" class="btn-quick-view" data-action="quick-view" data-type="bot" data-id="${sanitize(bot.id)}">
+                🔍 Specs
+              </button>
+              <a href="${sanitize(bot.tradingViewLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; justify-content: center; text-decoration: none;">
+                ${bot.isFree ? 'TradingView' : 'VIP Algo'}
+              </a>
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-card-wa" title="Inquire on WhatsApp">
+                💬
+              </a>
+            </div>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="card-meta-row">
-            <span>Market: <strong>${sanitize(bot.market || 'All')}</strong></span>
-            <span>TF: <strong>${sanitize(bot.timeframe || 'Multi')}</strong></span>
-          </div>
-          <h3 class="card-title">${sanitize(bot.title)}</h3>
-          <p class="card-desc">${sanitize(bot.description)}</p>
-          <div class="card-tags">
-            ${(bot.features || []).map(f => `<span class="tag-pill">${sanitize(f)}</span>`).join('')}
-          </div>
-          <div class="card-footer">
-            <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--neon-bull);">
-              ${bot.isFree ? 'FREE SCRIPT' : 'VIP ALGO'}
-            </span>
-            <a href="${sanitize(bot.tradingViewLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-              View on TradingView
-            </a>
-          </div>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-action="quick-view"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openQuickView(btn.dataset.type, btn.dataset.id));
+    });
+
+    container.querySelectorAll('[data-action="test-chart"]').forEach(btn => {
+      btn.addEventListener('click', () => this.testBotOnChart(btn.dataset.id));
+    });
+  }
+
+  generateMiniSparklineSvg(rateStr) {
+    const rate = parseFloat(String(rateStr).replace(/[^0-9.]/g, '')) || 78;
+    const isHigh = rate >= 78;
+    const stroke = isHigh ? '#00f298' : '#00b8ff';
+    const path = isHigh
+      ? "M 0,22 Q 18,24 34,16 T 58,12 T 74,4 T 90,2"
+      : "M 0,22 Q 22,20 40,24 T 64,10 T 78,8 T 90,4";
+    return `
+      <svg class="card-sparkline-svg" viewBox="0 0 90 28" fill="none">
+        <path d="${path}" stroke="${stroke}" stroke-width="2" stroke-linecap="round" fill="none" filter="drop-shadow(0 0 4px ${stroke})" />
+      </svg>
+    `;
   }
 
   // --- 2. RENDER BOOKS HUB ---
@@ -297,6 +413,8 @@ class TradingStoreApp {
       items = items.filter(b => b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q));
     }
 
+    items = this.sortItems(items);
+
     if (items.length === 0) {
       container.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
@@ -305,30 +423,43 @@ class TradingStoreApp {
       return;
     }
 
-    container.innerHTML = items.map(book => `
-      <div class="card-item">
-        <div class="card-image-wrap">
-          <img src="${sanitize(book.cover || 'logo.svg')}" alt="${sanitize(book.title)}" loading="lazy" />
-          <span class="card-badge" style="color: var(--neon-cyan); border-color: var(--neon-cyan);">${sanitize(book.fileType || 'PDF eBook')}</span>
-          ${book.rating ? `<span class="card-winrate" style="color: var(--neon-gold); border-color: var(--neon-gold);">★ ${sanitize(book.rating)}</span>` : ''}
-        </div>
-        <div class="card-body">
-          <div class="card-meta-row">
-            <span>By: <strong>${sanitize(book.author || 'Pro Analyst')}</strong></span>
-            <span>${sanitize(book.pages || 'Full Guide')}</span>
+    container.innerHTML = items.map(book => {
+      const waText = `Assalam-o-Alaikum! Mujhe TradingStore se "${book.title}" PDF trading book chahiye.`;
+      const waUrl = this.getWhatsAppUrl(waText);
+
+      return `
+        <div class="card-item">
+          <div class="card-image-wrap">
+            <img src="${sanitize(book.cover || 'logo.svg')}" alt="${sanitize(book.title)}" loading="lazy" onerror="this.src='logo.svg'" />
+            <span class="card-badge" style="color: var(--neon-cyan); border-color: var(--neon-cyan);">${sanitize(book.fileType || 'PDF eBook')}</span>
+            ${book.rating ? `<span class="card-winrate" style="color: var(--neon-gold); border-color: var(--neon-gold);">★ ${sanitize(book.rating)}</span>` : ''}
           </div>
-          <h3 class="card-title">${sanitize(book.title)}</h3>
-          <p class="card-desc">${sanitize(book.description)}</p>
-          <div class="card-footer">
-            <span class="tag-pill" style="color: var(--neon-bull); border-color: var(--border-glow);">${sanitize(book.category || 'Price Action')}</span>
-            <a href="${sanitize(book.downloadLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Download PDF
-            </a>
+          <div class="card-body">
+            <div class="card-meta-row">
+              <span>By: <strong>${sanitize(book.author || 'Pro Analyst')}</strong></span>
+              <span>${sanitize(book.pages || 'Full Guide')}</span>
+            </div>
+            <h3 class="card-title">${sanitize(book.title)}</h3>
+            <p class="card-desc">${sanitize(book.description)}</p>
+            <div class="card-actions-row">
+              <button type="button" class="btn-quick-view" data-action="quick-view" data-type="book" data-id="${sanitize(book.id)}">
+                🔍 Overview
+              </button>
+              <a href="${sanitize(book.downloadLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="flex: 1; justify-content: center; text-decoration: none;">
+                Download PDF
+              </a>
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-card-wa" title="Inquire on WhatsApp">
+                💬
+              </a>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-action="quick-view"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openQuickView(btn.dataset.type, btn.dataset.id));
+    });
   }
 
   // --- 3. RENDER COURSES HUB ---
@@ -343,6 +474,8 @@ class TradingStoreApp {
       items = items.filter(c => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q) || (c.instructor || '').toLowerCase().includes(q));
     }
 
+    items = this.sortItems(items);
+
     if (items.length === 0) {
       container.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
@@ -351,33 +484,46 @@ class TradingStoreApp {
       return;
     }
 
-    container.innerHTML = items.map(course => `
-      <div class="card-item">
-        <div class="card-image-wrap">
-          <img src="${sanitize(course.thumbnail || 'logo.svg')}" alt="${sanitize(course.title)}" loading="lazy" />
-          ${course.badge ? `<span class="card-badge">${sanitize(course.badge)}</span>` : ''}
-          <span class="card-winrate">${sanitize(course.duration || 'Video Class')}</span>
-        </div>
-        <div class="card-body">
-          <div class="card-meta-row">
-            <span>Mentor: <strong>${sanitize(course.instructor || 'Senior Mentor')}</strong></span>
-            <span>Level: <strong>${sanitize(course.level || 'All Levels')}</strong></span>
+    container.innerHTML = items.map(course => {
+      const waText = `Assalam-o-Alaikum! Mujhe TradingStore se "${course.title}" trading mentorship course join krna hai.`;
+      const waUrl = this.getWhatsAppUrl(waText);
+
+      return `
+        <div class="card-item">
+          <div class="card-image-wrap">
+            <img src="${sanitize(course.thumbnail || 'logo.svg')}" alt="${sanitize(course.title)}" loading="lazy" onerror="this.src='logo.svg'" />
+            ${course.badge ? `<span class="card-badge">🎓 ${sanitize(course.badge)}</span>` : ''}
+            <span class="card-winrate">${sanitize(course.duration || 'Video Class')}</span>
           </div>
-          <h3 class="card-title">${sanitize(course.title)}</h3>
-          <p class="card-desc">${sanitize(course.description)}</p>
-          <div class="card-footer">
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Full Syllabus Included</span>
-            <a href="${sanitize(course.accessLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-              Watch Course
-            </a>
+          <div class="card-body">
+            <div class="card-meta-row">
+              <span>Mentor: <strong>${sanitize(course.instructor || 'Senior Mentor')}</strong></span>
+              <span>Level: <strong>${sanitize(course.level || 'All Levels')}</strong></span>
+            </div>
+            <h3 class="card-title">${sanitize(course.title)}</h3>
+            <p class="card-desc">${sanitize(course.description)}</p>
+            <div class="card-actions-row">
+              <button type="button" class="btn-quick-view" data-action="quick-view" data-type="course" data-id="${sanitize(course.id)}">
+                🔍 Syllabus
+              </button>
+              <a href="${sanitize(course.accessLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; justify-content: center; text-decoration: none;">
+                Watch Course
+              </a>
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-card-wa" title="Inquire on WhatsApp">
+                💬
+              </a>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-action="quick-view"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openQuickView(btn.dataset.type, btn.dataset.id));
+    });
   }
 
-  // --- 4. RENDER PREMIUM HUB (UNIFIED VIP PAGE UNLOCK) ---
+  // --- 4. RENDER PREMIUM HUB ---
   renderPremium() {
     const container = document.getElementById('premiumGrid');
     const lockCard = document.getElementById('premiumLockCard');
@@ -407,9 +553,11 @@ class TradingStoreApp {
 
     container.innerHTML = items.map(prem => {
       const scriptUrl = sanitize(prem.scriptLink || 'https://www.tradingview.com');
+      const formattedPrice = this.formatPrice(prem.priceUSD, prem.pricePKR);
+      const waText = `Assalam-o-Alaikum! Mujhe TradingStore se "${prem.title}" (${formattedPrice}) buy karna hai. Proof details provide karein.`;
+      const waUrl = this.getWhatsAppUrl(waText);
 
       if (isUnlocked) {
-        // UNLOCKED STATE: Full access to private script and setup
         return `
           <div class="premium-card unlocked-card">
             <div class="premium-card-header">
@@ -431,16 +579,17 @@ class TradingStoreApp {
               `).join('')}
             </ul>
 
-            <div class="premium-card-actions">
-              <a href="${scriptUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; text-decoration: none;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                Open / Add to TradingView
+            <div class="card-actions-row">
+              <a href="${scriptUrl}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; justify-content: center; padding: 14px; text-decoration: none;">
+                Open in TradingView
               </a>
+              <button type="button" class="btn-quick-view" data-action="quick-view" data-type="premium" data-id="${sanitize(prem.id)}">
+                🔍 Specs
+              </button>
             </div>
           </div>
         `;
       } else {
-        // LOCKED STATE: Preview and purchase / enter key
         return `
           <div class="premium-card">
             <div class="premium-card-header">
@@ -448,8 +597,7 @@ class TradingStoreApp {
               <h3 class="card-title" style="font-size: 1.4rem;">${sanitize(prem.title)}</h3>
               <p style="color: var(--text-secondary); font-size: 0.9rem;">${sanitize(prem.tagline || '')}</p>
               <div class="pricing-box">
-                <span class="price-usd">$${sanitize(prem.priceUSD || 49)}</span>
-                <span class="price-pkr">/ PKR ${prem.pricePKR ? prem.pricePKR.toLocaleString() : '13,500'}</span>
+                <span class="price-usd" style="font-size: 1.4rem; color: var(--neon-gold); font-weight: 800;">${formattedPrice}</span>
                 ${prem.winRate ? `<span class="card-winrate" style="margin-left: auto;">Win: ${sanitize(prem.winRate)}</span>` : ''}
               </div>
             </div>
@@ -466,30 +614,873 @@ class TradingStoreApp {
             <div class="premium-card-actions">
               <button class="btn-buy-gold" data-action="purchase" data-id="${sanitize(prem.id)}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                Buy VIP Access / Send Proof
+                Buy VIP Access / Submit Proof
               </button>
-              <button class="btn-unlock-key" data-action="focus-key">
-                Already have VIP Password? Enter Key Above ⬆
-              </button>
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <button type="button" class="btn-quick-view" data-action="quick-view" data-type="premium" data-id="${sanitize(prem.id)}" style="flex: 1; justify-content: center;">
+                  🔍 Quick View
+                </button>
+                <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-card-wa" style="justify-content: center; padding: 10px 16px;">
+                  💬 Order via WhatsApp
+                </a>
+              </div>
             </div>
           </div>
         `;
       }
     }).join('');
 
-    // Attach event listeners safely
     container.querySelectorAll('[data-action="purchase"]').forEach(btn => {
       btn.addEventListener('click', () => this.openPurchaseModal(btn.dataset.id));
+  // ==========================================================================
+  // QUANTITATIVE TERMINAL & LIVE CANDLESTICK SIMULATOR
+  // ==========================================================================
+  initLiveChartStudio() {
+    this.chartCanvas = document.getElementById('heroCandleCanvas');
+    if (!this.chartCanvas) return;
+    this.chartCtx = this.chartCanvas.getContext('2d');
+
+    // Generate Initial Simulated Candlesticks
+    this.generateCandles(this.chartSymbol, this.chartTimeframe);
+
+    // Responsive Canvas Resize
+    const resizeCanvas = () => {
+      const rect = this.chartCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      this.chartCanvas.width = rect.width * dpr;
+      this.chartCanvas.height = rect.height * dpr;
+      this.chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      this.chartWidth = rect.width;
+      this.chartHeight = rect.height;
+      this.drawCanvasChart();
+    };
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 60);
+
+    // Canvas Mouse Events (Crosshair & Hover HUD)
+    this.chartCanvas.addEventListener('mousemove', (e) => {
+      const rect = this.chartCanvas.getBoundingClientRect();
+      this.chartHoverX = e.clientX - rect.left;
+      this.chartHoverY = e.clientY - rect.top;
+      this.drawCanvasChart();
     });
-    container.querySelectorAll('[data-action="focus-key"]').forEach(btn => {
+
+    this.chartCanvas.addEventListener('mouseleave', () => {
+      this.chartHoverX = -1;
+      this.chartHoverY = -1;
+      this.drawCanvasChart();
+    });
+
+    // Asset Switcher Tabs
+    document.querySelectorAll('#chartAssetTabs .asset-tab-pill').forEach(btn => {
       btn.addEventListener('click', () => {
-        const input = document.getElementById('inputVipPageKey');
-        if (input) {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          input.focus();
-        }
+        document.querySelectorAll('#chartAssetTabs .asset-tab-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.chartSymbol = btn.dataset.symbol || 'BTC/USDT';
+        const titleEl = document.getElementById('terminalCurrentAssetTitle');
+        if (titleEl) titleEl.innerText = `${this.chartSymbol} • PERP ALGO SIMULATOR`;
+        this.generateCandles(this.chartSymbol, this.chartTimeframe);
+        this.drawCanvasChart();
+        this.showToast(`Switched terminal chart to ${this.chartSymbol}`, "info");
       });
     });
+
+    // Timeframe Selector Buttons
+    document.querySelectorAll('#chartTimeframeGroup .tf-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#chartTimeframeGroup .tf-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.chartTimeframe = btn.dataset.tf || '5m';
+        this.generateCandles(this.chartSymbol, this.chartTimeframe);
+        this.drawCanvasChart();
+      });
+    });
+
+    // Overlay Toggles
+    const obChk = document.getElementById('chkOverlayOB');
+    const sigChk = document.getElementById('chkOverlaySignals');
+    const emaChk = document.getElementById('chkOverlayEMA');
+    const tpslChk = document.getElementById('chkOverlayTPSL');
+
+    if (obChk) obChk.addEventListener('change', (e) => { this.chartOverlays.orderBlocks = e.target.checked; this.drawCanvasChart(); });
+    if (sigChk) sigChk.addEventListener('change', (e) => { this.chartOverlays.signals = e.target.checked; this.drawCanvasChart(); });
+    if (emaChk) emaChk.addEventListener('change', (e) => { this.chartOverlays.ema = e.target.checked; this.drawCanvasChart(); });
+    if (tpslChk) tpslChk.addEventListener('change', (e) => { this.chartOverlays.tpSl = e.target.checked; this.drawCanvasChart(); });
+
+    // Reset Live Mode Button
+    const resetBtn = document.getElementById('btnChartResetView');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.generateCandles(this.chartSymbol, this.chartTimeframe);
+        this.drawCanvasChart();
+        this.showToast("Refreshed live terminal candles.", "info");
+      });
+    }
+
+    // Start Live Market Ticker Loop
+    this.startChartTicker();
+  }
+
+  generateCandles(symbol, tf) {
+    const configMap = {
+      'BTC/USDT': { base: 94820, vol: 220, dec: 2 },
+      'ETH/USDT': { base: 3480, vol: 15, dec: 2 },
+      'XAU/USD': { base: 2684.3, vol: 4.2, dec: 2 },
+      'EUR/USD': { base: 1.0842, vol: 0.0012, dec: 4 },
+      'SOL/USDT': { base: 214.6, vol: 2.4, dec: 2 }
+    };
+    const cfg = configMap[symbol] || configMap['BTC/USDT'];
+    this.priceDecimals = cfg.dec;
+
+    this.candles = [];
+    const count = 32;
+    let curr = cfg.base - (cfg.vol * 3.5);
+    const now = Date.now();
+    const tfMs = tf === '1m' ? 60000 : tf === '15m' ? 900000 : tf === '1H' ? 3600000 : 300000;
+
+    for (let i = count; i >= 0; i--) {
+      const time = new Date(now - i * tfMs);
+      const delta = (Math.random() - 0.47) * cfg.vol;
+      const open = curr;
+      const close = curr + delta;
+      const high = Math.max(open, close) + Math.random() * (cfg.vol * 0.55);
+      const low = Math.min(open, close) - Math.random() * (cfg.vol * 0.55);
+      const volume = Math.round(150 + Math.random() * 850);
+
+      this.candles.push({
+        time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        open, high, low, close, volume,
+        isBull: close >= open
+      });
+      curr = close;
+    }
+
+    // Assign realistic algorithmic signal swing markers
+    if (this.candles.length > 15) {
+      this.candles[this.candles.length - 8].signal = 'BUY';
+      this.candles[this.candles.length - 8].signalLabel = 'BUY 🟢';
+      this.candles[this.candles.length - 18].signal = 'SELL';
+      this.candles[this.candles.length - 18].signalLabel = 'SELL 🔴';
+    }
+
+    this.updatePriceHud();
+  }
+
+  drawCanvasChart() {
+    if (!this.chartCtx || !this.chartCanvas) return;
+    const ctx = this.chartCtx;
+    const w = this.chartWidth || this.chartCanvas.getBoundingClientRect().width;
+    const h = this.chartHeight || this.chartCanvas.getBoundingClientRect().height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (!this.candles || this.candles.length === 0) return;
+
+    // Price scaling
+    let minP = Infinity;
+    let maxP = -Infinity;
+    this.candles.forEach(c => {
+      if (c.low < minP) minP = c.low;
+      if (c.high > maxP) maxP = c.high;
+    });
+
+    const padTop = 30;
+    const padBottom = 35;
+    const padRight = 68; // Space for right price axis
+    const padLeft = 14;
+
+    const priceSpan = (maxP - minP) || 1;
+    const chartH = h - padTop - padBottom;
+    const chartW = w - padLeft - padRight;
+
+    const priceToY = (p) => padTop + chartH - ((p - minP) / priceSpan) * chartH;
+    const yToPrice = (y) => minP + ((padTop + chartH - y) / chartH) * priceSpan;
+
+    // 1. Draw Background Grid Lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = padTop + (chartH / gridLines) * i;
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(w - padRight, y);
+      ctx.stroke();
+
+      // Right axis price label
+      const pVal = yToPrice(y);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(pVal.toFixed(this.priceDecimals), w - padRight + 8, y + 3);
+    }
+
+    // 2. Draw Order Blocks (SMC Institutional Liquidity Zones)
+    if (this.chartOverlays.orderBlocks) {
+      // Bullish Order Block Demand Zone (near bottom)
+      const obLowY = priceToY(minP + priceSpan * 0.12);
+      const obHighY = priceToY(minP + priceSpan * 0.24);
+      ctx.fillStyle = 'rgba(0, 242, 152, 0.07)';
+      ctx.fillRect(padLeft, obHighY, chartW, obLowY - obHighY);
+      ctx.strokeStyle = 'rgba(0, 242, 152, 0.35)';
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(padLeft, obHighY, chartW, obLowY - obHighY);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(0, 242, 152, 0.7)';
+      ctx.font = '9px "Outfit", sans-serif';
+      ctx.fillText('+OB DEMAND (SMC LIQUIDITY)', padLeft + 8, obHighY + 12);
+
+      // Bearish Order Block Supply Zone (near top)
+      const supLowY = priceToY(maxP - priceSpan * 0.22);
+      const supHighY = priceToY(maxP - priceSpan * 0.10);
+      ctx.fillStyle = 'rgba(255, 59, 105, 0.06)';
+      ctx.fillRect(padLeft, supHighY, chartW, supLowY - supHighY);
+      ctx.strokeStyle = 'rgba(255, 59, 105, 0.3)';
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(padLeft, supHighY, chartW, supLowY - supHighY);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255, 59, 105, 0.65)';
+      ctx.font = '9px "Outfit", sans-serif';
+      ctx.fillText('-OB SUPPLY (STOP HUNT ZONE)', padLeft + 8, supHighY + 12);
+    }
+
+    // 3. Draw EMA Ribbon Curves (20 & 50 period smooth curves)
+    if (this.chartOverlays.ema) {
+      const stepX = chartW / this.candles.length;
+      
+      // Fast EMA 20 (Cyan)
+      ctx.strokeStyle = 'rgba(0, 184, 255, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      this.candles.forEach((c, i) => {
+        const x = padLeft + i * stepX + stepX / 2;
+        const emaPrice = c.close * 0.7 + c.open * 0.3;
+        const y = priceToY(emaPrice);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Slow EMA 50 (Purple)
+      ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      this.candles.forEach((c, i) => {
+        const x = padLeft + i * stepX + stepX / 2;
+        const emaSlow = c.close * 0.5 + minP * 0.2 + maxP * 0.3;
+        const y = priceToY(emaSlow);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    // 4. Draw Candlesticks & Volumes
+    const candleCount = this.candles.length;
+    const colWidth = chartW / candleCount;
+    const bodyWidth = Math.max(3, colWidth * 0.68);
+
+    let hoveredCandle = null;
+
+    this.candles.forEach((c, i) => {
+      const xCenter = padLeft + i * colWidth + colWidth / 2;
+      const yOpen = priceToY(c.open);
+      const yClose = priceToY(c.close);
+      const yHigh = priceToY(c.high);
+      const yLow = priceToY(c.low);
+
+      const isBull = c.close >= c.open;
+      const color = isBull ? '#00f298' : '#ff3b69';
+
+      // Check if mouse hovers this candle
+      if (this.chartHoverX >= (xCenter - colWidth / 2) && this.chartHoverX <= (xCenter + colWidth / 2)) {
+        hoveredCandle = c;
+      }
+
+      // Draw Wick
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(xCenter, yHigh);
+      ctx.lineTo(xCenter, yLow);
+      ctx.stroke();
+
+      // Draw Candle Body
+      const bodyTop = Math.min(yOpen, yClose);
+      const bodyHeight = Math.max(2, Math.abs(yClose - yOpen));
+      ctx.fillStyle = color;
+      ctx.fillRect(xCenter - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+
+      // Volume Bar below candle
+      const maxVolH = 30;
+      const volH = Math.min(maxVolH, (c.volume / 1000) * maxVolH);
+      ctx.fillStyle = isBull ? 'rgba(0, 242, 152, 0.18)' : 'rgba(255, 59, 105, 0.18)';
+      ctx.fillRect(xCenter - bodyWidth / 2, h - padBottom - volH, bodyWidth, volH);
+
+      // 5. Draw Buy / Sell Signal Markers
+      if (this.chartOverlays.signals && c.signal) {
+        if (c.signal === 'BUY') {
+          // Green Triangle pointing up below candle
+          const triY = yLow + 8;
+          ctx.fillStyle = '#00f298';
+          ctx.beginPath();
+          ctx.moveTo(xCenter, triY);
+          ctx.lineTo(xCenter - 5, triY + 8);
+          ctx.lineTo(xCenter + 5, triY + 8);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = '#00f298';
+          ctx.font = 'bold 9px "Outfit", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('BUY', xCenter, triY + 18);
+        } else if (c.signal === 'SELL') {
+          // Red Triangle pointing down above candle
+          const triY = yHigh - 8;
+          ctx.fillStyle = '#ff3b69';
+          ctx.beginPath();
+          ctx.moveTo(xCenter, triY);
+          ctx.lineTo(xCenter - 5, triY - 8);
+          ctx.lineTo(xCenter + 5, triY - 8);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = '#ff3b69';
+          ctx.font = 'bold 9px "Outfit", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('SELL', xCenter, triY - 12);
+        }
+      }
+    });
+
+    // 6. Draw Take Profit / Stop Loss Projections from last signal
+    if (this.chartOverlays.tpSl) {
+      const lastCandle = this.candles[this.candles.length - 1];
+      const tpY = priceToY(lastCandle.close * 1.034);
+      const slY = priceToY(lastCandle.close * 0.988);
+
+      ctx.setLineDash([4, 4]);
+
+      // Take Profit line (Gold)
+      ctx.strokeStyle = 'rgba(255, 184, 0, 0.7)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padLeft + chartW * 0.75, tpY);
+      ctx.lineTo(w - padRight, tpY);
+      ctx.stroke();
+      ctx.fillStyle = 'var(--neon-gold)';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('TP1 +3.4%', padLeft + chartW * 0.77, tpY - 4);
+
+      // Stop Loss line (Red)
+      ctx.strokeStyle = 'rgba(255, 59, 105, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(padLeft + chartW * 0.75, slY);
+      ctx.lineTo(w - padRight, slY);
+      ctx.stroke();
+      ctx.fillStyle = 'var(--neon-bear)';
+      ctx.fillText('SL -1.2%', padLeft + chartW * 0.77, slY - 4);
+
+      ctx.setLineDash([]);
+    }
+
+    // 7. Live Pulsing Current Price Line
+    const latest = this.candles[this.candles.length - 1];
+    const latestY = priceToY(latest.close);
+    const isBullLast = latest.close >= latest.open;
+    const accentColor = isBullLast ? '#00f298' : '#ff3b69';
+
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padLeft, latestY);
+    ctx.lineTo(w - padRight, latestY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Right Axis Live Price Badge
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(w - padRight + 2, latestY - 9, padRight - 4, 18);
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 10px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(latest.close.toFixed(this.priceDecimals), w - padRight / 2, latestY + 4);
+
+    // 8. Crosshair & Hover Overlay
+    if (this.chartHoverX >= padLeft && this.chartHoverX <= (w - padRight)) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 2]);
+
+      // Vertical cursor line
+      ctx.beginPath();
+      ctx.moveTo(this.chartHoverX, padTop);
+      ctx.lineTo(this.chartHoverX, h - padBottom);
+      ctx.stroke();
+
+      // Horizontal cursor line
+      if (this.chartHoverY >= padTop && this.chartHoverY <= (h - padBottom)) {
+        ctx.beginPath();
+        ctx.moveTo(padLeft, this.chartHoverY);
+        ctx.lineTo(w - padRight, this.chartHoverY);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // Update Floating HUD Overlay
+      if (hoveredCandle) {
+        const timeEl = document.getElementById('crosshairTime');
+        const oEl = document.getElementById('crosshairOpen');
+        const hEl = document.getElementById('crosshairHigh');
+        const lEl = document.getElementById('crosshairLow');
+        const cEl = document.getElementById('crosshairClose');
+
+        if (timeEl) timeEl.innerText = hoveredCandle.time;
+        if (oEl) oEl.innerText = hoveredCandle.open.toFixed(this.priceDecimals);
+        if (hEl) hEl.innerText = hoveredCandle.high.toFixed(this.priceDecimals);
+        if (lEl) lEl.innerText = hoveredCandle.low.toFixed(this.priceDecimals);
+        if (cEl) cEl.innerText = hoveredCandle.close.toFixed(this.priceDecimals);
+      }
+    }
+  }
+
+  startChartTicker() {
+    if (this.chartTickerInterval) clearInterval(this.chartTickerInterval);
+
+    let tickCount = 0;
+    this.chartTickerInterval = setInterval(() => {
+      if (!this.candles || this.candles.length === 0) return;
+
+      const last = this.candles[this.candles.length - 1];
+      const delta = (Math.random() - 0.49) * (this.priceDecimals === 4 ? 0.0003 : 18);
+      last.close += delta;
+      if (last.close > last.high) last.high = last.close;
+      if (last.close < last.low) last.low = last.close;
+      last.isBull = last.close >= last.open;
+
+      tickCount++;
+      // Roll to new candle periodically
+      if (tickCount >= 22) {
+        tickCount = 0;
+        const now = new Date();
+        const newCandle = {
+          time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          open: last.close,
+          high: last.close + Math.random() * (this.priceDecimals === 4 ? 0.0004 : 15),
+          low: last.close - Math.random() * (this.priceDecimals === 4 ? 0.0004 : 15),
+          close: last.close,
+          volume: Math.round(150 + Math.random() * 500),
+          isBull: true
+        };
+        this.candles.push(newCandle);
+        if (this.candles.length > 34) this.candles.shift();
+      }
+
+      this.updatePriceHud();
+      this.drawCanvasChart();
+    }, 850);
+  }
+
+  updatePriceHud() {
+    if (!this.candles || this.candles.length === 0) return;
+    const last = this.candles[this.candles.length - 1];
+    const prev = this.candles[0];
+    const priceEl = document.getElementById('chartLastPrice');
+    const chgEl = document.getElementById('chart24hChange');
+
+    const prefix = this.chartSymbol.includes('EUR') ? '€' : '$';
+    if (priceEl) {
+      priceEl.innerText = `${prefix}${last.close.toLocaleString(undefined, { minimumFractionDigits: this.priceDecimals, maximumFractionDigits: this.priceDecimals })}`;
+      priceEl.style.color = last.close >= last.open ? 'var(--neon-bull)' : 'var(--neon-bear)';
+    }
+
+    const pct = (((last.close - prev.open) / prev.open) * 100).toFixed(2);
+    if (chgEl) {
+      const isUp = pct >= 0;
+      chgEl.innerText = `${isUp ? '+' : ''}${pct}% ${isUp ? '▲' : '▼'}`;
+      chgEl.className = `hud-val ${isUp ? 'text-neon-bull' : 'text-neon-bear'}`;
+    }
+  }
+
+  testBotOnChart(botId) {
+    const bots = store.getBots();
+    const bot = bots.find(b => b.id === botId);
+    if (!bot) return;
+
+    // Smooth scroll up to terminal studio
+    const term = document.getElementById('chartTerminalWindow');
+    if (term) {
+      term.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      term.style.borderColor = 'var(--neon-bull)';
+      term.style.boxShadow = '0 0 50px rgba(0, 242, 152, 0.45)';
+      setTimeout(() => {
+        term.style.borderColor = 'rgba(0, 242, 152, 0.28)';
+        term.style.boxShadow = '0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 242, 152, 0.08)';
+      }, 1600);
+    }
+
+    // Update active bot badge & signal pill
+    const badgeEl = document.getElementById('chartActiveBotName');
+    const signalEl = document.getElementById('chartActiveSignal');
+    const winRateEl = document.getElementById('chartAlgoWinRate');
+
+    if (badgeEl) badgeEl.innerText = `${bot.title} Active`;
+    if (winRateEl) winRateEl.innerText = bot.winRate || '82.4%';
+    if (signalEl) {
+      signalEl.innerHTML = `<span class="signal-dot"></span> 🟢 STRONG BUY [${sanitize(bot.title.split(' ')[0])}]`;
+    }
+
+    // Plot instant buy trigger on the latest candle
+    if (this.candles && this.candles.length > 0) {
+      this.candles[this.candles.length - 1].signal = 'BUY';
+      this.candles[this.candles.length - 1].signalLabel = `ALGO ${bot.title.split(' ')[0]} 🟢`;
+      this.drawCanvasChart();
+    }
+
+    this.showToast(`Simulated "${bot.title}" on Live Terminal (Win Rate: ${bot.winRate || '82%'})!`, "success");
+    this.playSignalChime();
+  }
+
+  // ==========================================================================
+  // REAL-TIME ALGORITHMIC SIGNAL STREAMER
+  // ==========================================================================
+  initSignalStreamer() {
+    const track = document.getElementById('signalStreamTrack');
+    const soundBtn = document.getElementById('btnToggleSignalSound');
+    const soundIcon = document.getElementById('soundToggleIcon');
+
+    if (soundBtn) {
+      soundBtn.addEventListener('click', () => {
+        this.soundEnabled = !this.soundEnabled;
+        soundBtn.classList.toggle('active', this.soundEnabled);
+        if (soundIcon) soundIcon.innerText = this.soundEnabled ? '🔊' : '🔇';
+        this.showToast(`Signal audio chime ${this.soundEnabled ? 'enabled' : 'muted'}`, "info");
+        if (this.soundEnabled) this.playSignalChime();
+      });
+    }
+
+    if (!track) return;
+
+    this.streamSignals = [
+      { sym: 'BTC/USDT', action: 'LONG', px: '$94,850', tp: '+3.4%', algo: 'Sniper Flow v4.2', time: '1m ago' },
+      { sym: 'XAU/USD', action: 'SHORT', px: '$2,684.2', tp: '+180 pips', algo: 'ICT Silver Bullet', time: '3m ago' },
+      { sym: 'ETH/USDT', action: 'LONG', px: '$3,482.0', tp: '+5.1%', algo: 'SuperTrend AI', time: '7m ago' },
+      { sym: 'EUR/USD', action: 'LONG', px: '1.0842', tp: '+42 pips', algo: 'Sniper Flow v4.2', time: '11m ago' },
+      { sym: 'SOL/USDT', action: 'LONG', px: '$214.60', tp: '+8.4%', algo: 'Volume Profile CVD', time: '14m ago' },
+      { sym: 'NAS100', action: 'SHORT', px: '20,410', tp: '+115 pts', algo: 'VIP Apex Suite', time: '18m ago' }
+    ];
+
+    const renderStream = () => {
+      const fullList = [...this.streamSignals, ...this.streamSignals];
+      track.innerHTML = fullList.map(s => `
+        <div class="stream-pill">
+          <span class="pill-symbol">${s.sym}</span>
+          <span class="pill-action ${s.action === 'LONG' ? 'bull' : 'bear'}">${s.action === 'LONG' ? '🟢 LONG' : '🔴 SHORT'}</span>
+          <span>@ ${s.px}</span>
+          <span class="pill-pnl">${s.tp}</span>
+          <span style="color:var(--text-muted); font-size:0.7rem;">[${s.algo}]</span>
+          <span style="color:var(--text-muted); font-size:0.68rem;">• ${s.time}</span>
+        </div>
+      `).join('');
+    };
+    renderStream();
+
+    // Rotate new signals every 24 seconds
+    setInterval(() => {
+      const symbols = ['BTC/USDT', 'ETH/USDT', 'XAU/USD', 'SOL/USDT', 'EUR/USD'];
+      const algos = ['Sniper Flow v4.2', 'ICT Silver Bullet', 'CVD Beast', 'VIP Apex Suite'];
+      const sym = symbols[Math.floor(Math.random() * symbols.length)];
+      const algo = algos[Math.floor(Math.random() * algos.length)];
+      const isLong = Math.random() > 0.35;
+      const newSignal = {
+        sym,
+        action: isLong ? 'LONG' : 'SHORT',
+        px: sym === 'BTC/USDT' ? '$' + (94700 + Math.floor(Math.random() * 300)) : sym === 'ETH/USDT' ? '$' + (3470 + Math.floor(Math.random() * 25)) : '$' + (2680 + Math.floor(Math.random() * 8)),
+        tp: isLong ? `+${(2.2 + Math.random() * 4).toFixed(1)}%` : `+${(1.8 + Math.random() * 3).toFixed(1)}%`,
+        algo,
+        time: 'Just now'
+      };
+      this.streamSignals.unshift(newSignal);
+      if (this.streamSignals.length > 8) this.streamSignals.pop();
+      renderStream();
+      this.playSignalChime();
+    }, 24000);
+  }
+
+  playSignalChime() {
+    if (!this.soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this.audioCtx) this.audioCtx = new AudioCtx();
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, this.audioCtx.currentTime); // A5
+      osc.frequency.exponentialRampToValueAtTime(1320, this.audioCtx.currentTime + 0.15); // E6
+      gain.gain.setValueAtTime(0.08, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + 0.25);
+    } catch (e) {}
+  }
+
+  // ==========================================================================
+  // INTERACTIVE ALGORITHMIC ROI CALCULATOR
+  // ==========================================================================
+  initRoiCalculator() {
+    const rangeCap = document.getElementById('rangeCapital');
+    const rangeTrades = document.getElementById('rangeTrades');
+    const rangeRisk = document.getElementById('rangeRisk');
+    const selectBot = document.getElementById('selectCalcBot');
+    const btnGet = document.getElementById('btnCalcGetStrategy');
+
+    if (!rangeCap || !rangeTrades || !rangeRisk || !selectBot) return;
+
+    const onInput = () => this.updateRoiCalculator();
+    rangeCap.addEventListener('input', onInput);
+    rangeTrades.addEventListener('input', onInput);
+    rangeRisk.addEventListener('input', onInput);
+    selectBot.addEventListener('change', onInput);
+
+    if (btnGet) {
+      btnGet.addEventListener('click', () => {
+        this.switchTab('bots');
+        const botId = selectBot.value === 'sniper' ? 'bot_1' : selectBot.value === 'ict' ? 'bot_2' : selectBot.value === 'cvd' ? 'bot_3' : 'bot_1';
+        const card = document.getElementById(`card_bot_${botId}`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.borderColor = 'var(--neon-bull)';
+          card.style.boxShadow = '0 0 35px rgba(0,242,152,0.45)';
+          setTimeout(() => {
+            card.style.borderColor = '';
+            card.style.boxShadow = '';
+          }, 2000);
+        }
+      });
+    }
+
+    this.updateRoiCalculator();
+  }
+
+  updateRoiCalculator() {
+    const rangeCap = document.getElementById('rangeCapital');
+    const rangeTrades = document.getElementById('rangeTrades');
+    const rangeRisk = document.getElementById('rangeRisk');
+    const selectBot = document.getElementById('selectCalcBot');
+
+    if (!rangeCap || !rangeTrades || !rangeRisk || !selectBot) return;
+
+    const capitalUSD = parseFloat(rangeCap.value) || 1000;
+    const trades = parseInt(rangeTrades.value) || 24;
+    const riskPct = parseFloat(rangeRisk.value) || 2.0;
+
+    const opt = selectBot.selectedOptions[0];
+    const winRate = parseFloat(opt ? opt.dataset.winrate : 80) || 80;
+    const rr = parseFloat(opt ? opt.dataset.rr : 2.5) || 2.5;
+
+    // Display Badges
+    const isPkr = this.currentCurrency === 'PKR';
+    const rate = 280;
+    const capDisplay = document.getElementById('valCapitalDisplay');
+    const tradesDisplay = document.getElementById('valTradesDisplay');
+    const riskDisplay = document.getElementById('valRiskDisplay');
+
+    if (capDisplay) {
+      capDisplay.innerText = isPkr ? `PKR ${(capitalUSD * rate).toLocaleString()}` : `$${capitalUSD.toLocaleString()}`;
+    }
+    if (tradesDisplay) tradesDisplay.innerText = `${trades} Trades`;
+    if (riskDisplay) riskDisplay.innerText = `${riskPct.toFixed(1)}%`;
+
+    // Mathematical projection
+    const wins = Math.round(trades * (winRate / 100));
+    const losses = trades - wins;
+    const riskPerTradeUSD = capitalUSD * (riskPct / 100);
+    const winProfitUSD = wins * (riskPerTradeUSD * rr);
+    const lossCostUSD = losses * riskPerTradeUSD;
+    const netProfitUSD = winProfitUSD - lossCostUSD;
+    const profitFactor = (winProfitUSD / Math.max(1, lossCostUSD)).toFixed(2);
+    const projectedBalanceUSD = capitalUSD + netProfitUSD;
+    const roiPct = ((netProfitUSD / capitalUSD) * 100).toFixed(1);
+
+    // Outputs
+    const profEl = document.getElementById('calcProjectedProfit');
+    const roiEl = document.getElementById('calcRoiPercent');
+    const wlEl = document.getElementById('calcWinLossCount');
+    const pfEl = document.getElementById('calcProfitFactor');
+    const balEl = document.getElementById('calcProjectedBalance');
+
+    const profitVal = isPkr ? Math.round(netProfitUSD * rate) : Math.round(netProfitUSD);
+    const balVal = isPkr ? Math.round(projectedBalanceUSD * rate) : Math.round(projectedBalanceUSD);
+
+    if (profEl) {
+      profEl.innerText = `${netProfitUSD >= 0 ? '+' : ''}${isPkr ? 'PKR ' + profitVal.toLocaleString() : '$' + profitVal.toLocaleString()}`;
+      profEl.style.color = netProfitUSD >= 0 ? 'var(--neon-bull)' : 'var(--neon-bear)';
+    }
+    if (roiEl) roiEl.innerText = `${roiPct >= 0 ? '+' : ''}${roiPct}% Est. Monthly ROI`;
+    if (wlEl) wlEl.innerText = `${wins} Wins / ${losses} Losses`;
+    if (pfEl) pfEl.innerText = `${profitFactor}x`;
+    if (balEl) balEl.innerText = isPkr ? `PKR ${balVal.toLocaleString()}` : `$${balVal.toLocaleString()}`;
+  }
+
+  // ==========================================================================
+  // PINESCRIPT V5 ARCHITECTURE STUDIO
+  // ==========================================================================
+  initPineStudio() {
+    document.querySelectorAll('#sectionPineExplorer .pine-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#sectionPineExplorer .pine-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#sectionPineExplorer .pine-tab-pane').forEach(p => p.classList.remove('active'));
+
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        const pane = document.getElementById(tab === 'strategy' ? 'paneStrategy' : tab === 'code' ? 'paneCode' : 'paneBacktest');
+        if (pane) pane.classList.add('active');
+      });
+    });
+
+    const copyBtn = document.getElementById('btnCopyPineCode');
+    const codeSnippet = document.getElementById('pineCodeSnippet');
+    if (copyBtn && codeSnippet) {
+      copyBtn.addEventListener('click', () => {
+        this.copyToClipboard(codeSnippet.innerText);
+        this.showToast("PineScript v5 source copied to clipboard! Paste directly into TradingView Pine Editor.", "success");
+      });
+    }
+  }
+
+  // --- PRODUCT DETAIL / QUICK VIEW MODAL ---
+  openQuickView(type, id) {
+    const modal = document.getElementById('productDetailModal');
+    const badge = document.getElementById('detailBadgeTag');
+    const title = document.getElementById('detailModalTitle');
+    const body = document.getElementById('detailModalBody');
+    if (!modal || !body) return;
+
+    let item = null;
+    let typeName = 'BOT';
+
+    if (type === 'bot') {
+      item = store.getBots().find(b => b.id === id);
+      typeName = 'PINESCRIPT BOT';
+    } else if (type === 'book') {
+      item = store.getBooks().find(b => b.id === id);
+      typeName = 'TRADING BOOK';
+    } else if (type === 'course') {
+      item = store.getCourses().find(c => c.id === id);
+      typeName = 'COURSE';
+    } else if (type === 'premium') {
+      item = store.getPremium().find(p => p.id === id);
+      typeName = 'VIP ALGORITHM';
+    }
+
+    if (!item) return;
+
+    if (badge) badge.innerText = typeName;
+    if (title) title.innerText = item.title;
+
+    const imgUrl = item.banner || item.thumbnail || item.cover || item.logo || 'logo.svg';
+    const waText = `Assalam-o-Alaikum! Mujhe "${item.title}" (${typeName}) k bare me details chahiye.`;
+    const waUrl = this.getWhatsAppUrl(waText);
+
+    body.innerHTML = `
+      <div class="detail-banner-wrap">
+        <img src="${sanitize(imgUrl)}" alt="${sanitize(item.title)}" onerror="this.src='logo.svg'" />
+      </div>
+
+      <div class="detail-spec-grid">
+        ${item.winRate ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Win Rate</div>
+            <div class="detail-spec-val" style="color: var(--neon-bull);">${sanitize(item.winRate)}</div>
+          </div>` : ''}
+        ${item.market ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Market</div>
+            <div class="detail-spec-val">${sanitize(item.market)}</div>
+          </div>` : ''}
+        ${item.timeframe ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Timeframe</div>
+            <div class="detail-spec-val">${sanitize(item.timeframe)}</div>
+          </div>` : ''}
+        ${item.author ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Author</div>
+            <div class="detail-spec-val">${sanitize(item.author)}</div>
+          </div>` : ''}
+        ${item.instructor ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Instructor</div>
+            <div class="detail-spec-val">${sanitize(item.instructor)}</div>
+          </div>` : ''}
+        ${item.pages ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Pages</div>
+            <div class="detail-spec-val">${sanitize(item.pages)}</div>
+          </div>` : ''}
+        ${item.duration ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Duration</div>
+            <div class="detail-spec-val">${sanitize(item.duration)}</div>
+          </div>` : ''}
+        ${item.priceUSD ? `
+          <div class="detail-spec-item">
+            <div class="detail-spec-label">Price</div>
+            <div class="detail-spec-val" style="color: var(--neon-gold);">${this.formatPrice(item.priceUSD, item.pricePKR)}</div>
+          </div>` : ''}
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="font-family: var(--font-heading); font-size: 1.1rem; margin-bottom: 6px;">Overview & Rules</h4>
+        <p style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.6;">${sanitize(item.description || item.tagline || 'Professional quantitative trading material.')}</p>
+      </div>
+
+      ${item.features && item.features.length > 0 ? `
+        <div style="margin-bottom: 24px;">
+          <h4 style="font-family: var(--font-heading); font-size: 1.05rem; margin-bottom: 10px;">Core Features & Signals</h4>
+          <div class="detail-feature-list">
+            ${item.features.map(f => `
+              <div class="detail-feature-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>${sanitize(f)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display: flex; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--border-subtle); padding-top: 18px;">
+        ${type === 'premium' ? `
+          <button type="button" class="btn-buy-gold" id="btnDetailBuyNow" style="flex: 1; justify-content: center; min-height: 46px;">
+            Buy VIP License
+          </button>
+        ` : `
+          <a href="${sanitize(item.tradingViewLink || item.downloadLink || item.accessLink || '#')}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; justify-content: center; text-decoration: none; min-height: 46px;">
+            Open Material
+          </a>
+        `}
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-card-wa" style="justify-content: center; padding: 12px 20px;">
+          💬 Inquire on WhatsApp
+        </a>
+      </div>
+    `;
+
+    const detailBuyBtn = document.getElementById('btnDetailBuyNow');
+    if (detailBuyBtn) {
+      detailBuyBtn.addEventListener('click', () => {
+        this.closeModals();
+        this.openPurchaseModal(item.id);
+      });
+    }
+
+    modal.classList.add('active');
   }
 
   // --- MANUAL PAYMENT MODAL & SCREENSHOT PROOF ---
@@ -509,7 +1500,7 @@ class TradingStoreApp {
     const contactInput = document.getElementById('userContactNumber');
 
     if (titleEl) titleEl.innerText = product.title;
-    if (priceEl) priceEl.innerText = `$${product.priceUSD} (PKR ${product.pricePKR?.toLocaleString() || ''})`;
+    if (priceEl) priceEl.innerText = this.formatPrice(product.priceUSD, product.pricePKR);
     if (previewImg) { previewImg.src = ''; previewImg.style.display = 'none'; }
     if (dropzone) dropzone.querySelector('.dropzone-text').style.display = 'block';
     if (fileInput) fileInput.value = '';
@@ -519,6 +1510,17 @@ class TradingStoreApp {
     this.renderPaymentMethodOptions();
 
     if (modal) modal.classList.add('active');
+  }
+
+  updatePurchaseModalPrice() {
+    if (!this.selectedProductForPurchase) return;
+    const priceEl = document.getElementById('modalProductPrice');
+    if (priceEl) {
+      priceEl.innerText = this.formatPrice(
+        this.selectedProductForPurchase.priceUSD,
+        this.selectedProductForPurchase.pricePKR
+      );
+    }
   }
 
   renderPaymentMethodOptions() {
@@ -542,7 +1544,7 @@ class TradingStoreApp {
       `).join('');
 
       tabsContainer.querySelectorAll('.payment-tab-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
           tabsContainer.querySelectorAll('.payment-tab-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           this.activePaymentMethod = methods.find(m => m.id === btn.dataset.payId);
@@ -587,6 +1589,13 @@ class TradingStoreApp {
         <div class="account-row" style="border-top: 1px dashed var(--border-subtle); padding-top: 8px;">
           <span style="color: var(--text-secondary); font-size: 0.85rem;">Account Title:</span>
           <strong style="color: var(--neon-gold);">${sanitize(m.accountTitle)}</strong>
+        </div>
+      ` : ''}
+
+      ${m.qrCode ? `
+        <div class="payment-qr-container" style="text-align: center; margin: 12px 0; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed var(--border-subtle);">
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">Scan QR Code to Pay:</div>
+          <img src="${sanitize(m.qrCode)}" alt="Payment QR Code" style="max-width: 160px; max-height: 160px; border-radius: 6px; border: 2px solid var(--border-medium); display: inline-block;" />
         </div>
       ` : ''}
 
@@ -663,12 +1672,40 @@ class TradingStoreApp {
 
   // --- EVENT BINDINGS ---
   bindEvents() {
-    // Navigation Tabs
+    // Navigation Tabs (Desktop)
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this.switchTab(btn.dataset.tab);
       });
     });
+
+    // Navigation Tabs (Mobile Docked Bottom Bar)
+    document.querySelectorAll('#mobileBottomNav .mobile-nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.tab) {
+          this.switchTab(btn.dataset.tab);
+        }
+      });
+    });
+
+    // Currency Switcher Button (USD / PKR)
+    const currBtn = document.getElementById('btnToggleCurrency');
+    if (currBtn) {
+      currBtn.addEventListener('click', () => this.toggleCurrency());
+    }
+
+    // Dismissible Announcement Ticker Bar
+    const dismissTickerBtn = document.getElementById('btnDismissTicker');
+    const tickerBar = document.getElementById('tickerBar');
+    if (dismissTickerBtn && tickerBar) {
+      if (sessionStorage.getItem('ticker_dismissed') === 'true') {
+        tickerBar.style.display = 'none';
+      }
+      dismissTickerBtn.addEventListener('click', () => {
+        tickerBar.style.display = 'none';
+        sessionStorage.setItem('ticker_dismissed', 'true');
+      });
+    }
 
     // Category Filter Chips
     document.querySelectorAll('.filter-chip').forEach(chip => {
@@ -680,16 +1717,50 @@ class TradingStoreApp {
       });
     });
 
-    // Search Input
+    // Catalog Sort Dropdown
+    const sortSelect = document.getElementById('catalogSortSelect');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', (e) => {
+        this.currentSort = e.target.value;
+        this.renderCurrentTab();
+      });
+    }
+
+    // Search Input & Clear Search Button
     const searchInput = document.getElementById('catalogSearchInput');
+    const clearSearchBtn = document.getElementById('btnClearSearch');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
         this.searchQuery = e.target.value;
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = this.searchQuery ? 'block' : 'none';
+        }
+        this.renderCurrentTab();
+      });
+    }
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (searchInput) searchInput.value = '';
+        this.searchQuery = '';
+        clearSearchBtn.style.display = 'none';
         this.renderCurrentTab();
       });
     }
 
     // --- GATEKEEPER MODAL CONTROLS ---
+    // Non-Irritating Guest Access Handlers
+    const grantGuest = () => {
+      gatekeeper.grantGuestAccess();
+      const modal = document.getElementById('gatekeeperModal');
+      if (modal) modal.classList.remove('active');
+      this.showToast("Guest Mode Active - You can browse free indicators & books!", "info");
+    };
+
+    const closeGateBtn = document.getElementById('btnCloseGatekeeper');
+    const guestBrowseBtn = document.getElementById('btnGatekeeperGuestBrowse');
+    if (closeGateBtn) closeGateBtn.addEventListener('click', grantGuest);
+    if (guestBrowseBtn) guestBrowseBtn.addEventListener('click', grantGuest);
+
     // Gatekeeper Tab Switching (Password vs Social Join)
     const gateTabPass = document.getElementById('gateTabPassword');
     const gateTabSocial = document.getElementById('gateTabSocial');
@@ -747,7 +1818,6 @@ class TradingStoreApp {
     const confirmSocialBtn = document.getElementById('btnConfirmSocialJoin');
     const socialAlertBox = document.getElementById('gateSocialAlert');
 
-    // Stealth 8-Second Confirm Button (NO countdown timer displayed!)
     if (confirmSocialBtn) {
       confirmSocialBtn.addEventListener('click', () => {
         confirmSocialBtn.innerText = "Verifying Membership...";
@@ -797,6 +1867,33 @@ class TradingStoreApp {
         if (e.target.files && e.target.files[0]) {
           this.processScreenshotFile(e.target.files[0]);
         }
+      });
+    }
+
+    // Direct WhatsApp Order Button in Purchase Modal
+    const waOrderBtn = document.getElementById('btnOrderViaWhatsApp');
+    if (waOrderBtn) {
+      waOrderBtn.addEventListener('click', () => {
+        if (!this.selectedProductForPurchase) {
+          this.showToast("Please select a product first.", "error");
+          return;
+        }
+        const prod = this.selectedProductForPurchase;
+        const contactVal = document.getElementById('userContactNumber')?.value?.trim() || '';
+        const notesVal = document.getElementById('userOrderNotes')?.value?.trim() || '';
+        const method = this.activePaymentMethod?.platform || 'Direct Bank/Crypto';
+        const priceStr = this.formatPrice(prod.priceUSD, prod.pricePKR);
+
+        let msg = `Assalam-o-Alaikum! Mujhe TradingStore se yeh VIP product buy karna hai:\n\n`;
+        msg += `📦 Product: ${prod.title}\n`;
+        msg += `💰 Price: ${priceStr}\n`;
+        msg += `💳 Selected Payment: ${method}\n`;
+        if (contactVal) msg += `📱 Contact: ${contactVal}\n`;
+        if (notesVal) msg += `📝 TradingView/Note: ${notesVal}\n`;
+        msg += `\nPayment proof send kr raha/rahi hu. Kindly check and share VIP access key.`;
+
+        const waUrl = this.getWhatsAppUrl(msg);
+        window.open(waUrl, '_blank');
       });
     }
 
@@ -890,10 +1987,47 @@ class TradingStoreApp {
       unlockBtn.addEventListener('click', () => this.submitPremiumKeyUnlock());
     }
 
-    // Modal Close Buttons
+    // Close Detail / Quick View Modal Button
+    const closeDetailBtn = document.getElementById('btnCloseDetailModal');
+    if (closeDetailBtn) {
+      closeDetailBtn.addEventListener('click', () => {
+        const modal = document.getElementById('productDetailModal');
+        if (modal) modal.classList.remove('active');
+      });
+    }
+
+    // General Modal Close Buttons
     document.querySelectorAll('.modal-close-btn, .modal-backdrop-close').forEach(btn => {
       btn.addEventListener('click', () => this.closeModals());
     });
+
+    // Hero Section Quick Action Buttons
+    const heroExploreBtn = document.getElementById('btnHeroExploreAlgos');
+    if (heroExploreBtn) {
+      heroExploreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.switchTab('bots');
+        const botsSec = document.getElementById('page-bots');
+        if (botsSec) botsSec.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    const heroVipBtn = document.getElementById('btnHeroOpenVip');
+    if (heroVipBtn) {
+      heroVipBtn.addEventListener('click', () => {
+        this.switchTab('premium');
+        const premSec = document.getElementById('page-premium');
+        if (premSec) premSec.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    const heroCalcBtn = document.getElementById('btnHeroScrollCalc');
+    if (heroCalcBtn) {
+      heroCalcBtn.addEventListener('click', () => {
+        const calcSec = document.getElementById('sectionRoiCalculator');
+        if (calcSec) calcSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
   }
 
   processScreenshotFile(file) {

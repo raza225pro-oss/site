@@ -8,8 +8,15 @@
 export const APP_CONFIG = {
   appName: "TradingStore",
   tagline: "TradingView Scripts • Premium Bots • Trading Academy",
-  version: "3.0.0",
+  version: "3.5.0",
   minEngagementSeconds: 8, // Strictly enforces the 8-second stealth rule
+  
+  // WhatsApp Support Number (Click-to-chat & Direct Purchase Orders)
+  whatsappSupportNumber: "923001234567",
+  
+  // Default Currency & Exchange Rate
+  currency: "USD", // "USD" or "PKR"
+  usdToPkrRate: 280,
   
   // Default Admin Credentials (can be updated in Admin Settings)
   adminDefaults: {
@@ -18,8 +25,29 @@ export const APP_CONFIG = {
     sessionDurationHours: 24
   },
 
+  // Gatekeeper Security Configuration
+  // Modes: "soft" (browse free catalog openly, only VIP locked), "strict" (entry gatekeeper modal), "disabled" (off)
+  gatekeeperConfig: {
+    enabled: true,
+    mode: "soft", // Default to soft mode to eliminate user irritation!
+    socialVerificationRequired: true,
+    passwordUnlockRequired: true,
+    minEngagementSeconds: 8,
+    guestBrowsingAllowed: true
+  },
+
+  // Curated High-Definition Trading Image Presets for 1-Click Selection in Admin
+  imagePresets: [
+    { label: "Candlestick Chart", url: "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?w=800&auto=format&fit=crop&q=80" },
+    { label: "SMC Order Blocks", url: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&auto=format&fit=crop&q=80" },
+    { label: "Crypto Delta CVD", url: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&auto=format&fit=crop&q=80" },
+    { label: "Gold & Trend AI", url: "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=800&auto=format&fit=crop&q=80" },
+    { label: "VIP Algo Matrix", url: "https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&auto=format&fit=crop&q=80" },
+    { label: "Trading Book Cover", url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=80" },
+    { label: "Masterclass Video", url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80" }
+  ],
+
   // Gatekeeper Channel Verification Links (Admin can add, remove, edit, toggle show/hide)
-  // Supports 1 link, 2 links together ("dono aik sath"), 3 links ("ya 3 bi lga skoon"), or custom channels!
   defaultSocialLinks: [
     {
       id: "link_tg",
@@ -42,18 +70,10 @@ export const APP_CONFIG = {
       platform: "youtube",
       title: "Subscribe on YouTube for Strategy Tutorials",
       url: "https://youtube.com/@tradingstore",
-      active: false, // Default hidden. Admin can turn ON to show 3 channels!
+      active: false,
       color: "#FF0000"
     }
   ],
-
-  // Gatekeeper Security Configuration
-  gatekeeperConfig: {
-    enabled: true,
-    socialVerificationRequired: true,
-    passwordUnlockRequired: true,
-    minEngagementSeconds: 8 // Stealth engagement rule (8 seconds per link)
-  },
 
   // Firebase Configuration (Optional: Paste your Firebase config here for live real-time multi-device sync on Vercel)
   firebaseConfig: {
