@@ -450,7 +450,19 @@ class DataStore {
   isPremiumPageUnlocked() {
     if (!this.isPremiumLockEnabled()) return true;
     try {
-      return localStorage.getItem('tradingstore_premium_unlocked') === 'true';
+      const unlocked = localStorage.getItem('tradingstore_premium_unlocked') === 'true';
+      if (!unlocked) return false;
+      const activeKey = (localStorage.getItem('tradingstore_premium_active_key') || '').trim().toUpperCase();
+      if (activeKey) {
+        const list = this.getPremiumPasswords();
+        const found = list.find(k => k.key && k.key.trim().toUpperCase() === activeKey);
+        if (!found || found.status !== 'active') {
+          // Key was revoked or deleted by admin! Auto-lock!
+          this.setPremiumPageUnlocked(false);
+          return false;
+        }
+      }
+      return true;
     } catch (e) {
       return false;
     }

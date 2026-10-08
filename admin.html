@@ -23,16 +23,15 @@
       <form id="adminLoginForm">
         <div style="margin-bottom: 16px; text-align: left;">
           <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Username</label>
-          <input type="text" id="adminLoginUser" class="form-input" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--admin-border); background:rgba(0,0,0,0.4); color:#fff;" value="admin" required autocomplete="username" />
+          <input type="text" id="adminLoginUser" class="form-input" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--admin-border); background:rgba(0,0,0,0.4); color:#fff;" placeholder="Enter username" required autocomplete="username" />
         </div>
 
-        <div style="margin-bottom: 24px; text-align: left;">
+        <div style="margin-bottom: 20px; text-align: left;">
           <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Password</label>
-          <input type="password" id="adminLoginPass" class="form-input" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--admin-border); background:rgba(0,0,0,0.4); color:#fff;" placeholder="••••••••" value="admin" required autocomplete="current-password" />
-          <div style="margin-top:6px; font-size:0.75rem; color:var(--text-dim);">
-            Default: <strong>admin</strong> / <strong>admin</strong> (Changeable anytime in Settings).
-          </div>
+          <input type="password" id="adminLoginPass" class="form-input" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--admin-border); background:rgba(0,0,0,0.4); color:#fff;" placeholder="••••••••" required autocomplete="current-password" />
         </div>
+
+        <div id="adminLoginAlert" style="display:none; padding:12px; border-radius:6px; margin-bottom:16px; font-size:0.85rem; text-align:left;"></div>
 
         <button type="submit" style="width:100%; padding:14px; background:linear-gradient(135deg, var(--admin-accent), #00c97b); border:none; border-radius:8px; color:#000; font-family:var(--font-head); font-weight:800; font-size:1rem; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;">
           Access Command Center
@@ -166,6 +165,21 @@
       </header>
 
       <div class="admin-body">
+        <!-- Default Password Security Warning Banner -->
+        <div id="defaultCredsWarningBanner" style="display:none; background:rgba(255, 59, 105, 0.12); border:1px solid #ff3b69; border-radius:8px; padding:14px 20px; margin-bottom:24px; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.5rem;">⚠️</span>
+            <div>
+              <strong style="color:#ff6b8b; font-size:0.95rem;">Security Alert: Default Admin Password Active!</strong>
+              <div style="color:var(--text-dim); font-size:0.82rem; margin-top:2px;">
+                Aap default 'admin' password use kr rahe hain. Security k liye Settings & Security tab mein ja kar apna password tabdeel karein.
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-sm-danger" onclick="window.adminPanel.switchSection('settings')" style="white-space:nowrap; padding:8px 16px;">
+            Change Password
+          </button>
+        </div>
 
         <!-- ==================================================================
              SECTION 1: DASHBOARD

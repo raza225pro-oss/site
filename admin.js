@@ -15,6 +15,18 @@ function sanitize(str) {
   return s.replace(/[&<>"'/]/g, c => map[c]);
 }
 
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return '#';
+  const clean = url.trim();
+  if (/^(javascript|vbscript|data:(?!image\/)):/i.test(clean)) {
+    return '#';
+  }
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('#') || clean.startsWith('/') || clean.startsWith('data:image/')) {
+    return clean;
+  }
+  return '#' + clean;
+}
+
 class AdminPanel {
   constructor() {
     this.currentSection = 'dashboard';
@@ -30,38 +42,83 @@ class AdminPanel {
   }
 
   init() {
-    this.checkAuth();
     this.bindEvents();
-    this.renderStats();
-    this.renderCurrentSection();
+    this.checkAuth();
 
-    // Subscribe to store updates
+    // Subscribe to store updates only if logged in
     store.subscribe(() => {
-      this.renderStats();
-      this.renderCurrentSection();
+      if (this.isAuthenticated()) {
+        this.renderStats();
+        this.renderCurrentSection();
+        this.checkDefaultCredentialsWarning();
+      }
     });
   }
 
-  // --- AUTHENTICATION ---
+  // --- AUTHENTICATION & SECURITY ---
+  isAuthenticated() {
+    return sessionStorage.getItem(this.sessionKey) === 'true';
+  }
+
   checkAuth() {
-    const isAuthed = sessionStorage.getItem(this.sessionKey) === 'true';
+    const isAuthed = this.isAuthenticated();
     const loginScreen = document.getElementById('adminLoginScreen');
     const adminWrapper = document.getElementById('adminWrapper');
 
     if (!isAuthed) {
       if (loginScreen) loginScreen.style.display = 'flex';
-      if (adminWrapper) adminWrapper.style.display = 'none';
+      if (adminWrapper) {
+        adminWrapper.style.display = 'none';
+        this.clearAdminDom(); // Scrub tables from DOM so no data leaks in DevTools
+      }
     } else {
       if (loginScreen) loginScreen.style.display = 'none';
-      if (adminWrapper) adminWrapper.style.display = 'flex';
+      if (adminWrapper) {
+        adminWrapper.style.display = 'flex';
+        this.renderStats();
+        this.renderCurrentSection();
+        this.checkDefaultCredentialsWarning();
+      }
     }
+  }
+
+  clearAdminDom() {
+    const targets = [
+      'recentOrdersTableBody', 'botsTableBody', 'booksTableBody', 'coursesTableBody',
+      'premBotsTableBody', 'premBooksTableBody', 'premCoursesTableBody',
+      'socialLinksTableBody', 'passwordsTableBody', 'premiumKeysTableBody',
+      'paymentsTableBody', 'ordersTableBody'
+    ];
+    targets.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+  }
+
+  checkDefaultCredentialsWarning() {
+    const banner = document.getElementById('defaultCredsWarningBanner');
+    if (!banner) return;
+    const settings = store.getSiteSettings();
+    const isDefault = (settings.adminUsername || '').toLowerCase() === 'admin' &&
+                      (settings.adminPassword === 'admin' || settings.adminPassword === 'admin123');
+    banner.style.display = isDefault ? 'flex' : 'none';
   }
 
   login(username, password) {
     const now = Date.now();
+    const alertBox = document.getElementById('adminLoginAlert');
+
     if (now < this.loginLockoutUntil) {
       const remaining = Math.ceil((this.loginLockoutUntil - now) / 1000);
-      this.showToast(`Too many attempts! Wait ${remaining} seconds.`, "error");
+      const msg = `Security Lock: Too many failed attempts! Wait ${remaining} seconds.`;
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(255, 59, 105, 0.18)';
+        alertBox.style.border = '1px solid #ff3b69';
+        alertBox.style.color = '#ff6b8b';
+        alertBox.innerText = msg;
+      }
+      this.showToast(msg, "error");
       return false;
     }
 
@@ -72,6 +129,7 @@ class AdminPanel {
     ) {
       sessionStorage.setItem(this.sessionKey, 'true');
       this.loginAttempts = 0;
+      if (alertBox) alertBox.style.display = 'none';
       this.checkAuth();
       this.showToast("Welcome back, Administrator!", "success");
       return true;
@@ -80,9 +138,26 @@ class AdminPanel {
     this.loginAttempts++;
     if (this.loginAttempts >= 5) {
       this.loginLockoutUntil = now + 10 * 60 * 1000;
-      this.showToast("Too many failed attempts! Locked for 10 minutes.", "error");
+      const lockMsg = "Security Lock: 5 failed attempts! Locked for 10 minutes.";
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(255, 59, 105, 0.18)';
+        alertBox.style.border = '1px solid #ff3b69';
+        alertBox.style.color = '#ff6b8b';
+        alertBox.innerText = lockMsg;
+      }
+      this.showToast(lockMsg, "error");
     } else {
-      this.showToast("Invalid username or password.", "error");
+      const remainingTries = 5 - this.loginAttempts;
+      const failMsg = `Invalid credentials. (${remainingTries} attempt(s) remaining)`;
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(255, 59, 105, 0.18)';
+        alertBox.style.border = '1px solid #ff3b69';
+        alertBox.style.color = '#ff6b8b';
+        alertBox.innerText = failMsg;
+      }
+      this.showToast(failMsg, "error");
     }
     return false;
   }
@@ -90,6 +165,7 @@ class AdminPanel {
   logout() {
     sessionStorage.removeItem(this.sessionKey);
     this.checkAuth();
+    this.showToast("Logged out successfully.", "info");
   }
 
   // --- SECTION NAVIGATION ---
@@ -264,8 +340,8 @@ class AdminPanel {
     }
 
     tbody.innerHTML = items.map(item => {
-      const logoSrc = sanitize(item.logo || item.cover || item.thumbnail || 'logo.svg');
-      const directLink = sanitize(item.downloadLink || item.tradingViewLink || item.accessLink || '#');
+      const logoSrc = sanitizeUrl(item.logo || item.cover || item.thumbnail || 'logo.svg');
+      const directLink = sanitizeUrl(item.downloadLink || item.tradingViewLink || item.accessLink || '#');
       const title = sanitize(item.title);
       const cat = sanitize(item.category || 'General');
 
@@ -354,6 +430,7 @@ class AdminPanel {
       const p = (link.platform || 'custom').toLowerCase();
       const meta = platformLabels[p] || platformLabels.custom;
       const isActive = link.active !== false;
+      const safeUrl = sanitizeUrl(link.url);
 
       return `
         <tr>
@@ -365,14 +442,14 @@ class AdminPanel {
           <td><strong>${sanitize(link.title)}</strong></td>
           <td>
             <div style="display:flex; align-items:center; gap:8px;">
-              <a href="${sanitize(link.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--admin-accent); font-family:var(--font-code); font-size:0.8rem; text-decoration:none;">
-                ${sanitize(link.url.length > 36 ? link.url.substring(0, 33) + '...' : link.url)}
+              <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--admin-accent); font-family:var(--font-code); font-size:0.8rem; text-decoration:none;">
+                ${safeUrl.length > 36 ? safeUrl.substring(0, 33) + '...' : safeUrl}
               </a>
-              <button type="button" class="btn-copy-small" onclick="window.adminPanel.copyText('${sanitize(link.url)}')">Copy</button>
+              <button type="button" class="btn-copy-small" data-action="copy-social-url" data-url="${safeUrl}">Copy</button>
             </div>
           </td>
           <td>
-            <button type="button" class="btn-sm-edit" onclick="window.adminPanel.toggleSocialLink('${sanitize(link.id)}')" 
+            <button type="button" class="btn-sm-edit" data-action="toggle-social" data-id="${sanitize(link.id)}" 
               style="${isActive 
                 ? 'background:rgba(0,242,152,0.15); border-color:var(--admin-accent); color:var(--admin-accent);' 
                 : 'background:rgba(255,59,105,0.15); border-color:#ff3b69; color:#ff6b8b;'} padding:4px 10px; font-size:0.78rem; font-weight:700;">
@@ -381,13 +458,26 @@ class AdminPanel {
           </td>
           <td>
             <div class="action-btn-group">
-              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openEditSocialModal('${sanitize(link.id)}')">Edit</button>
-              <button type="button" class="btn-sm-del" onclick="window.adminPanel.deleteSocialLink('${sanitize(link.id)}')">Delete</button>
+              <button type="button" class="btn-sm-edit" data-action="edit-social" data-id="${sanitize(link.id)}">Edit</button>
+              <button type="button" class="btn-sm-del" data-action="delete-social" data-id="${sanitize(link.id)}">Delete</button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
+
+    tbody.querySelectorAll('[data-action="copy-social-url"]').forEach(btn => {
+      btn.addEventListener('click', () => this.copyText(btn.dataset.url));
+    });
+    tbody.querySelectorAll('[data-action="toggle-social"]').forEach(btn => {
+      btn.addEventListener('click', () => this.toggleSocialLink(btn.dataset.id));
+    });
+    tbody.querySelectorAll('[data-action="edit-social"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openEditSocialModal(btn.dataset.id));
+    });
+    tbody.querySelectorAll('[data-action="delete-social"]').forEach(btn => {
+      btn.addEventListener('click', () => this.deleteSocialLink(btn.dataset.id));
+    });
   }
 
   renderSitePasswordsTable() {

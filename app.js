@@ -21,7 +21,10 @@ function sanitize(str) {
 function sanitizeUrl(url) {
   if (!url || typeof url !== 'string') return '#';
   const clean = url.trim();
-  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('#') || clean.startsWith('/')) {
+  if (/^(javascript|vbscript|data:(?!image\/)):/i.test(clean)) {
+    return '#';
+  }
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('#') || clean.startsWith('/') || clean.startsWith('data:image/')) {
     return clean;
   }
   return '#' + clean;
@@ -187,7 +190,7 @@ class TradingStoreApp {
       }
 
       return `
-        <a href="${sanitize(link.url)}" target="_blank" rel="noopener noreferrer" class="social-join-btn ${sanitize(link.platform)}" data-link-id="${sanitize(link.id)}" id="gate_btn_${sanitize(link.id)}">
+        <a href="${sanitizeUrl(link.url)}" target="_blank" rel="noopener noreferrer" class="social-join-btn ${sanitize(link.platform)}" data-link-id="${sanitize(link.id)}" id="gate_btn_${sanitize(link.id)}">
           <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
             ${getPlatformIconSvg(link.platform)}
             <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">
