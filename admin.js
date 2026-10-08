@@ -1,20 +1,13 @@
 /**
  * TRADINGSTORE - Master Admin Panel Controller
- * Inventory Management, Device-Locked Password Generator, Payment Accounts,
- * Order Inbox with Screenshot Viewer, and Customer Key Dispatch.
- * 
- * SECURITY:
- * - Session-based auth (sessionStorage) - tab-specific
- * - Rate-limited login attempts (max 5 per 10 min)
- * - XSS protection via sanitization
- * - No inline onclick handlers
+ * Free & Premium Catalog Management (MediaFire & Google Drive Links)
+ * Lock 1: Site Entry Lock (Passcodes & 8s Community Channels)
+ * Lock 2: Premium Page Lock (VIP Keys & Lock Toggle)
+ * Payment Accounts & Customer Orders Inbox (Gmail Must & Screenshot Inspector)
  */
 
 import { store } from './store.js';
 
-/**
- * SECURITY: HTML sanitizer to prevent XSS attacks
- */
 function sanitize(str) {
   if (str === null || str === undefined) return '';
   const s = String(str);
@@ -65,7 +58,6 @@ class AdminPanel {
   }
 
   login(username, password) {
-    // Rate limiting check
     const now = Date.now();
     if (now < this.loginLockoutUntil) {
       const remaining = Math.ceil((this.loginLockoutUntil - now) / 1000);
@@ -85,11 +77,12 @@ class AdminPanel {
       return true;
     }
 
-    // Failed attempt
     this.loginAttempts++;
     if (this.loginAttempts >= 5) {
-      this.loginLockoutUntil = now + 10 * 60 * 1000; // 10 minute lockout
+      this.loginLockoutUntil = now + 10 * 60 * 1000;
       this.showToast("Too many failed attempts! Locked for 10 minutes.", "error");
+    } else {
+      this.showToast("Invalid username or password.", "error");
     }
     return false;
   }
@@ -115,19 +108,26 @@ class AdminPanel {
     if (topbarTitle) {
       const titles = {
         dashboard: "Executive Overview",
-        bots: "Manage TradingView Bots & Scripts",
-        books: "Manage Trading Books & PDFs",
-        courses: "Manage Trading Courses",
-        premium: "Manage VIP Premium Scripts",
-        passwords: "Site Access Passwords (Device-Locked)",
-        premiumKeys: "VIP Script Unlock Keys",
-        payments: "Payment Accounts (JazzCash, Crypto, Bank)",
-        orders: "Orders & Payment Screenshot Inbox",
-        socialLinks: "Gatekeeper Verification & Channel Links",
+        bots: "Manage Free Trading Bots",
+        books: "Manage Free Trading Books",
+        courses: "Manage Free Courses",
+        premBots: "Manage Premium Bots (VIP)",
+        premBooks: "Manage Premium Books (VIP)",
+        premCourses: "Manage Premium Courses (VIP)",
+        siteEntryLock: "Lock 1: Site Entry Lock (Gatekeeper)",
+        premiumPageLock: "Lock 2: Premium Page Lock",
+        payments: "Payment Accounts (JazzCash, EasyPaisa, TRC20, Bank)",
+        orders: "Customer Orders & Payment Proof Inbox",
         settings: "Site Settings & Admin Security"
       };
       topbarTitle.innerText = titles[sectionId] || "Control Panel";
     }
+
+    // Close mobile menu if open
+    const sidebar = document.querySelector('.admin-sidebar');
+    const backdrop = document.getElementById('adminSidebarBackdrop');
+    if (sidebar) sidebar.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('active');
 
     this.renderCurrentSection();
   }
@@ -139,25 +139,28 @@ class AdminPanel {
         this.renderRecentOrdersTable();
         break;
       case 'bots':
-        this.renderBotsTable();
+        this.renderCatalogTable('bots', 'botsTableBody', 'bot');
         break;
       case 'books':
-        this.renderBooksTable();
+        this.renderCatalogTable('books', 'booksTableBody', 'book');
         break;
       case 'courses':
-        this.renderCoursesTable();
+        this.renderCatalogTable('courses', 'coursesTableBody', 'course');
         break;
-      case 'premium':
-        this.renderPremiumTable();
+      case 'premBots':
+        this.renderCatalogTable('premiumBots', 'premBotsTableBody', 'premBot');
         break;
-      case 'socialLinks':
-        this.renderSocialLinksSection();
+      case 'premBooks':
+        this.renderCatalogTable('premiumBooks', 'premBooksTableBody', 'premBook');
         break;
-      case 'passwords':
-        this.renderSitePasswordsTable();
+      case 'premCourses':
+        this.renderCatalogTable('premiumCourses', 'premCoursesTableBody', 'premCourse');
         break;
-      case 'premiumKeys':
-        this.renderPremiumKeysTable();
+      case 'siteEntryLock':
+        this.renderSiteEntryLockSection();
+        break;
+      case 'premiumPageLock':
+        this.renderPremiumPageLockSection();
         break;
       case 'payments':
         this.renderPaymentsTable();
@@ -171,21 +174,27 @@ class AdminPanel {
     }
   }
 
-  // --- 1. DASHBOARD & STATS ---
+  // --- STATS OVERVIEW ---
   renderStats() {
     const bots = store.getBots();
     const books = store.getBooks();
     const courses = store.getCourses();
-    const premium = store.getPremium();
+    const premBots = store.getPremiumBots();
+    const premBooks = store.getPremiumBooks();
+    const premCourses = store.getPremiumCourses();
     const orders = store.getOrders();
     const sitePasswords = store.getSitePasswords();
+    const premPasswords = store.getPremiumPasswords();
 
     const elBots = document.getElementById('statBotsCount');
     const elBooks = document.getElementById('statBooksCount');
     const elCourses = document.getElementById('statCoursesCount');
-    const elPremium = document.getElementById('statPremiumCount');
+    const elPremBots = document.getElementById('statPremBotsCount');
+    const elPremBooks = document.getElementById('statPremBooksCount');
+    const elPremCourses = document.getElementById('statPremCoursesCount');
     const elPending = document.getElementById('statPendingOrdersCount');
     const elPasswords = document.getElementById('statPasswordsCount');
+    const elPremKeys = document.getElementById('statPremKeysCount');
     const orderBadge = document.getElementById('navOrdersBadge');
 
     const pendingCount = orders.filter(o => o.status === 'pending').length;
@@ -193,9 +202,12 @@ class AdminPanel {
     if (elBots) elBots.innerText = bots.length;
     if (elBooks) elBooks.innerText = books.length;
     if (elCourses) elCourses.innerText = courses.length;
-    if (elPremium) elPremium.innerText = premium.length;
+    if (elPremBots) elPremBots.innerText = premBots.length;
+    if (elPremBooks) elPremBooks.innerText = premBooks.length;
+    if (elPremCourses) elPremCourses.innerText = premCourses.length;
     if (elPending) elPending.innerText = pendingCount;
     if (elPasswords) elPasswords.innerText = sitePasswords.length;
+    if (elPremKeys) elPremKeys.innerText = premPasswords.length;
 
     if (orderBadge) {
       orderBadge.innerText = pendingCount;
@@ -209,182 +221,182 @@ class AdminPanel {
 
     const orders = store.getOrders().slice(0, 5);
     if (orders.length === 0) {
-      container.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No orders received yet.</td></tr>`;
+      container.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:20px;">No customer orders received yet.</td></tr>`;
       return;
     }
 
     container.innerHTML = orders.map(ord => `
       <tr>
         <td><strong style="font-family: var(--font-code); color: var(--admin-cyan);">${sanitize(ord.id)}</strong></td>
+        <td><span style="color:var(--admin-gold); font-weight:600;">${sanitize(ord.gmail || 'N/A')}</span></td>
         <td>${sanitize(ord.contactNumber)}</td>
-        <td>${sanitize(ord.productTitle)}</td>
         <td>${sanitize(ord.platform)}</td>
         <td><span class="badge-tag ${ord.status}">${sanitize(ord.status).toUpperCase()}</span></td>
         <td>
           <button class="btn-sm-view" data-action="view-screenshot" data-id="${sanitize(ord.id)}">
-            View Screenshot
+            🔍 Screenshot
           </button>
         </td>
       </tr>
     `).join('');
 
-    // Bind event listeners
     container.querySelectorAll('[data-action="view-screenshot"]').forEach(btn => {
       btn.addEventListener('click', () => this.inspectScreenshot(btn.dataset.id));
     });
   }
 
-  // --- 2. BOTS CRUD ---
-  renderBotsTable() {
-    const tbody = document.getElementById('botsTableBody');
+  // --- REUSABLE CATALOG TABLE RENDERER (BOTS, BOOKS, COURSES, PREM BOTS, PREM BOOKS, PREM COURSES) ---
+  renderCatalogTable(storeKey, tableBodyId, type) {
+    const tbody = document.getElementById(tableBodyId);
     if (!tbody) return;
 
-    const list = store.getBots();
-    if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No bots created yet. Click "Add New Bot".</td></tr>`;
+    let items = [];
+    if (storeKey === 'bots') items = store.getBots();
+    else if (storeKey === 'books') items = store.getBooks();
+    else if (storeKey === 'courses') items = store.getCourses();
+    else if (storeKey === 'premiumBots') items = store.getPremiumBots();
+    else if (storeKey === 'premiumBooks') items = store.getPremiumBooks();
+    else if (storeKey === 'premiumCourses') items = store.getPremiumCourses();
+
+    if (items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-dim); padding:24px;">No items in this category yet. Click the Add button above to add one!</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = list.map(bot => `
-      <tr>
-        <td><img src="${sanitize(bot.logo || 'assets/logo.svg')}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;" /></td>
-        <td><strong>${sanitize(bot.title)}</strong></td>
-        <td>${sanitize(bot.market || 'All')}</td>
-        <td>${sanitize(bot.category || 'Scalping')}</td>
-        <td><span class="badge-tag active">${bot.isFree ? 'FREE' : 'VIP'}</span></td>
-        <td><a href="${sanitize(bot.tradingViewLink)}" target="_blank" style="color:var(--admin-cyan);">Open Link</a></td>
-        <td>
-          <div class="action-btn-group">
-            <button class="btn-sm-edit" data-action="edit-bot" data-id="${sanitize(bot.id)}">Edit</button>
-            <button class="btn-sm-del" data-action="delete-bot" data-id="${sanitize(bot.id)}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = items.map(item => {
+      const logoSrc = sanitize(item.logo || item.cover || item.thumbnail || 'logo.svg');
+      const directLink = sanitize(item.downloadLink || item.tradingViewLink || item.accessLink || '#');
+      const title = sanitize(item.title);
+      const cat = sanitize(item.category || 'General');
 
-    tbody.querySelectorAll('[data-action="edit-bot"]').forEach(btn => {
-      btn.addEventListener('click', () => this.openEditProductModal('bot', btn.dataset.id));
+      return `
+        <tr>
+          <td>
+            <img src="${logoSrc}" alt="${title}" style="width:42px; height:42px; border-radius:8px; object-fit:cover; background:#000; border:1px solid var(--admin-border);" onerror="this.src='logo.svg'" />
+          </td>
+          <td>
+            <strong style="color:#fff; font-size:0.95rem;">${title}</strong>
+          </td>
+          <td>
+            <span style="background:rgba(255,255,255,0.06); padding:3px 8px; border-radius:6px; font-size:0.75rem; color:var(--text-dim);">${cat}</span>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <a href="${directLink}" target="_blank" rel="noopener noreferrer" style="color:var(--admin-accent); font-family:var(--font-code); font-size:0.8rem; text-decoration:none;">
+                ${directLink.length > 36 ? directLink.substring(0, 33) + '...' : directLink}
+              </a>
+              <button type="button" class="btn-copy-small" data-action="copy-url" data-url="${directLink}">Copy</button>
+            </div>
+          </td>
+          <td>
+            <div class="action-btn-group">
+              <button class="btn-sm-edit" data-action="edit-item" data-type="${type}" data-id="${sanitize(item.id)}">Edit</button>
+              <button class="btn-sm-del" data-action="delete-item" data-type="${type}" data-id="${sanitize(item.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.querySelectorAll('[data-action="copy-url"]').forEach(btn => {
+      btn.addEventListener('click', () => this.copyText(btn.dataset.url));
     });
-    tbody.querySelectorAll('[data-action="delete-bot"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deleteItem('bot', btn.dataset.id));
+    tbody.querySelectorAll('[data-action="edit-item"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openEditItemModal(btn.dataset.type, btn.dataset.id));
+    });
+    tbody.querySelectorAll('[data-action="delete-item"]').forEach(btn => {
+      btn.addEventListener('click', () => this.deleteItem(btn.dataset.type, btn.dataset.id));
     });
   }
 
-  // --- 3. BOOKS CRUD ---
-  renderBooksTable() {
-    const tbody = document.getElementById('booksTableBody');
+  // --- LOCK 1: SITE ENTRY LOCK SECTION ---
+  renderSiteEntryLockSection() {
+    const gkConfig = store.getGatekeeperConfig();
+    const toggleMaster = document.getElementById('toggleSiteEntryLockMaster');
+    const labelMaster = document.getElementById('labelSiteEntryLockState');
+    const socialReq = document.getElementById('gkConfigSocialReq');
+    const passReq = document.getElementById('gkConfigPasswordReq');
+    const stealthSec = document.getElementById('gkConfigStealthSec');
+
+    const isEnabled = gkConfig.enabled !== false && gkConfig.mode !== 'disabled';
+    if (toggleMaster) toggleMaster.checked = isEnabled;
+    if (labelMaster) {
+      labelMaster.innerText = isEnabled ? "Enabled (Active)" : "Disabled (Open Access)";
+      labelMaster.style.color = isEnabled ? "var(--admin-accent)" : "var(--admin-red)";
+    }
+    if (socialReq) socialReq.checked = gkConfig.socialVerificationRequired !== false;
+    if (passReq) passReq.checked = gkConfig.passwordUnlockRequired !== false;
+    if (stealthSec) stealthSec.value = gkConfig.minEngagementSeconds || 8;
+
+    this.renderSocialLinksTable();
+    this.renderSitePasswordsTable();
+  }
+
+  renderSocialLinksTable() {
+    const tbody = document.getElementById('socialLinksTableBody');
     if (!tbody) return;
 
-    const list = store.getBooks();
-    if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No books found. Click "Add New Book".</td></tr>`;
+    const links = store.getSocialLinks();
+    if (!links || links.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-dim); padding:20px;">No community channels configured. Click "+ Add Channel Link" above.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = list.map(book => `
-      <tr>
-        <td><img src="${sanitize(book.cover || 'assets/logo.svg')}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" /></td>
-        <td><strong>${sanitize(book.title)}</strong></td>
-        <td>${sanitize(book.author || 'Author')}</td>
-        <td>${sanitize(book.pages || 'N/A')}</td>
-        <td>${sanitize(book.category || 'Trading')}</td>
-        <td><a href="${sanitize(book.downloadLink)}" target="_blank" style="color:var(--admin-cyan);">View PDF</a></td>
-        <td>
-          <div class="action-btn-group">
-            <button class="btn-sm-edit" data-action="edit-book" data-id="${sanitize(book.id)}">Edit</button>
-            <button class="btn-sm-del" data-action="delete-book" data-id="${sanitize(book.id)}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    const platformLabels = {
+      telegram: { name: 'Telegram', color: '#2AABEE' },
+      whatsapp: { name: 'WhatsApp', color: '#25D366' },
+      youtube: { name: 'YouTube', color: '#FF0000' },
+      facebook: { name: 'Facebook', color: '#1877F2' },
+      custom: { name: 'Custom', color: 'var(--admin-accent)' }
+    };
 
-    tbody.querySelectorAll('[data-action="edit-book"]').forEach(btn => {
-      btn.addEventListener('click', () => this.openEditProductModal('book', btn.dataset.id));
-    });
-    tbody.querySelectorAll('[data-action="delete-book"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deleteItem('book', btn.dataset.id));
-    });
+    tbody.innerHTML = links.map(link => {
+      const p = (link.platform || 'custom').toLowerCase();
+      const meta = platformLabels[p] || platformLabels.custom;
+      const isActive = link.active !== false;
+
+      return `
+        <tr>
+          <td>
+            <span style="background:rgba(255,255,255,0.06); border:1px solid ${meta.color}; color:${meta.color}; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">
+              ${meta.name}
+            </span>
+          </td>
+          <td><strong>${sanitize(link.title)}</strong></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <a href="${sanitize(link.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--admin-accent); font-family:var(--font-code); font-size:0.8rem; text-decoration:none;">
+                ${sanitize(link.url.length > 36 ? link.url.substring(0, 33) + '...' : link.url)}
+              </a>
+              <button type="button" class="btn-copy-small" onclick="window.adminPanel.copyText('${sanitize(link.url)}')">Copy</button>
+            </div>
+          </td>
+          <td>
+            <button type="button" class="btn-sm-edit" onclick="window.adminPanel.toggleSocialLink('${sanitize(link.id)}')" 
+              style="${isActive 
+                ? 'background:rgba(0,242,152,0.15); border-color:var(--admin-accent); color:var(--admin-accent);' 
+                : 'background:rgba(255,59,105,0.15); border-color:#ff3b69; color:#ff6b8b;'} padding:4px 10px; font-size:0.78rem; font-weight:700;">
+              ${isActive ? '✓ Shown (8s Timer Required)' : '✕ Hidden (Optional)'}
+            </button>
+          </td>
+          <td>
+            <div class="action-btn-group">
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openEditSocialModal('${sanitize(link.id)}')">Edit</button>
+              <button type="button" class="btn-sm-del" onclick="window.adminPanel.deleteSocialLink('${sanitize(link.id)}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
-  // --- 4. COURSES CRUD ---
-  renderCoursesTable() {
-    const tbody = document.getElementById('coursesTableBody');
-    if (!tbody) return;
-
-    const list = store.getCourses();
-    if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No courses found. Click "Add New Course".</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = list.map(c => `
-      <tr>
-        <td><img src="${sanitize(c.thumbnail || 'assets/logo.svg')}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" /></td>
-        <td><strong>${sanitize(c.title)}</strong></td>
-        <td>${sanitize(c.instructor || 'Senior Mentor')}</td>
-        <td>${sanitize(c.duration || 'N/A')}</td>
-        <td>${sanitize(c.level || 'All Levels')}</td>
-        <td><a href="${sanitize(c.accessLink)}" target="_blank" style="color:var(--admin-cyan);">Open Course</a></td>
-        <td>
-          <div class="action-btn-group">
-            <button class="btn-sm-edit" data-action="edit-course" data-id="${sanitize(c.id)}">Edit</button>
-            <button class="btn-sm-del" data-action="delete-course" data-id="${sanitize(c.id)}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-
-    tbody.querySelectorAll('[data-action="edit-course"]').forEach(btn => {
-      btn.addEventListener('click', () => this.openEditProductModal('course', btn.dataset.id));
-    });
-    tbody.querySelectorAll('[data-action="delete-course"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deleteItem('course', btn.dataset.id));
-    });
-  }
-
-  // --- 5. PREMIUM SCRIPTS CRUD ---
-  renderPremiumTable() {
-    const tbody = document.getElementById('premiumTableBody');
-    if (!tbody) return;
-
-    const list = store.getPremium();
-    if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No premium scripts listed.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = list.map(p => `
-      <tr>
-        <td><img src="${sanitize(p.banner || 'assets/logo.svg')}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;" /></td>
-        <td><strong>${sanitize(p.title)}</strong></td>
-        <td style="color:var(--admin-gold); font-weight:700;">$${sanitize(p.priceUSD)} / PKR ${p.pricePKR?.toLocaleString() || ''}</td>
-        <td>${sanitize(p.winRate || '80%+')}</td>
-        <td><span style="font-family:var(--font-code); font-size:0.8rem; color:var(--admin-cyan);">${p.scriptLink ? 'Invite Link Configured' : 'No link'}</span></td>
-        <td>
-          <div class="action-btn-group">
-            <button class="btn-sm-edit" data-action="edit-premium" data-id="${sanitize(p.id)}">Edit</button>
-            <button class="btn-sm-del" data-action="delete-premium" data-id="${sanitize(p.id)}">Delete</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-
-    tbody.querySelectorAll('[data-action="edit-premium"]').forEach(btn => {
-      btn.addEventListener('click', () => this.openEditProductModal('premium', btn.dataset.id));
-    });
-    tbody.querySelectorAll('[data-action="delete-premium"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deleteItem('premium', btn.dataset.id));
-    });
-  }
-
-  // --- 6. SITE ACCESS PASSWORDS ---
   renderSitePasswordsTable() {
     const tbody = document.getElementById('passwordsTableBody');
     if (!tbody) return;
 
     const list = store.getSitePasswords();
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-dim);">No site access passwords created.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:20px;">No site access keys created yet.</td></tr>`;
       return;
     }
 
@@ -403,21 +415,12 @@ class AdminPanel {
             </span>
           </td>
           <td>
-            ${usedCount > 0 ? `
-              <details style="font-size:0.8rem; color:var(--text-dim);">
-                <summary style="cursor:pointer; color:var(--admin-cyan);">${usedCount} Active Device(s)</summary>
-                <div style="padding:6px; background:rgba(0,0,0,0.3); border-radius:6px; margin-top:4px;">
-                  ${pwd.usedDevices.map(d => `
-                    <div>• ${sanitize(d.browser)} (${sanitize(d.platform)}) - ${sanitize(d.deviceId.substring(0, 14))}...</div>
-                  `).join('')}
-                </div>
-              </details>
-            ` : '<span style="color:var(--text-dim); font-size:0.8rem;">Unused</span>'}
+            <span style="font-size:0.8rem; color:var(--text-dim);">${usedCount} device(s) registered</span>
           </td>
           <td><span class="badge-tag ${pwd.status === 'active' ? 'active' : 'rejected'}">${sanitize(pwd.status).toUpperCase()}</span></td>
           <td>
             <div class="action-btn-group">
-              <button class="btn-sm-view" data-action="reset-pwd-devices" data-id="${sanitize(pwd.id)}" title="Reset registered devices so new devices can join">
+              <button class="btn-sm-view" data-action="reset-pwd-devices" data-id="${sanitize(pwd.id)}" title="Reset device counter">
                 Reset Devices
               </button>
               <button class="btn-sm-del" data-action="delete-pwd" data-id="${sanitize(pwd.id)}">
@@ -430,27 +433,52 @@ class AdminPanel {
     }).join('');
 
     tbody.querySelectorAll('[data-action="reset-pwd-devices"]').forEach(btn => {
-      btn.addEventListener('click', () => this.resetPasswordDevices(btn.dataset.id));
+      btn.addEventListener('click', () => {
+        store.resetPasswordDevices(btn.dataset.id);
+        this.showToast("Registered devices reset for key.", "success");
+        this.renderSitePasswordsTable();
+      });
     });
     tbody.querySelectorAll('[data-action="delete-pwd"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deleteSitePassword(btn.dataset.id));
+      btn.addEventListener('click', () => {
+        if (confirm("Delete this site access key?")) {
+          store.deleteSitePassword(btn.dataset.id);
+          this.showToast("Key deleted.", "info");
+          this.renderSitePasswordsTable();
+        }
+      });
     });
   }
 
-  // --- 7. PREMIUM VIP PAGE PASSWORDS (UNIFIED FULL PAGE ACCESS) ---
+  // --- LOCK 2: PREMIUM PAGE LOCK SECTION ---
+  renderPremiumPageLockSection() {
+    const isEnabled = store.isPremiumLockEnabled();
+    const toggleMaster = document.getElementById('togglePremiumLockMaster');
+    const labelMaster = document.getElementById('labelPremiumLockState');
+
+    if (toggleMaster) toggleMaster.checked = isEnabled;
+    if (labelMaster) {
+      labelMaster.innerText = isEnabled ? "Enabled (VIP Key Required)" : "Disabled (Open VIP Page)";
+      labelMaster.style.color = isEnabled ? "var(--admin-gold)" : "var(--admin-accent)";
+    }
+
+    this.renderPremiumKeysTable();
+  }
+
   renderPremiumKeysTable() {
     const tbody = document.getElementById('premiumKeysTableBody');
     if (!tbody) return;
 
     const list = store.getPremiumPasswords();
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No VIP passwords issued yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:20px;">No VIP premium keys issued yet. Use the form above to generate one.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = list.map(k => {
       const cleanContact = (k.assignedTo || '').replace(/[^0-9]/g, '');
       const waLink = cleanContact ? `https://wa.me/${cleanContact}` : '';
+      const isEmail = (k.assignedTo || '').includes('@');
 
       return `
         <tr>
@@ -458,7 +486,8 @@ class AdminPanel {
           <td>
             ${k.assignedTo ? `
               <div><strong>${sanitize(k.assignedTo)}</strong></div>
-              ${cleanContact ? `<a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">💬 WhatsApp</a>` : ''}
+              ${cleanContact && !isEmail ? `<a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">💬 WhatsApp</a>` : ''}
+              ${isEmail ? `<a href="mailto:${sanitize(k.assignedTo)}" style="font-size:0.75rem; color:var(--admin-cyan); text-decoration:none;">✉️ Email</a>` : ''}
             ` : '<span style="color:var(--text-dim);">-</span>'}
           </td>
           <td>${sanitize(k.note || 'Full VIP Suite')}</td>
@@ -471,7 +500,7 @@ class AdminPanel {
           <td>
             <div class="action-btn-group">
               <button class="btn-sm-edit" data-action="copy-key" data-key="${sanitize(k.key)}">Copy</button>
-              <button class="btn-sm-view" data-action="toggle-prem-key" data-id="${sanitize(k.id)}" title="Toggle Active / Inactive">
+              <button class="btn-sm-view" data-action="toggle-prem-key" data-id="${sanitize(k.id)}">
                 ${k.status === 'active' ? 'Revoke' : 'Activate'}
               </button>
               <button class="btn-sm-del" data-action="delete-prem-key" data-id="${sanitize(k.id)}">Delete</button>
@@ -491,34 +520,40 @@ class AdminPanel {
           item.status = item.status === 'active' ? 'inactive' : 'active';
           store.savePremiumPassword(item);
           this.renderPremiumKeysTable();
-          this.showToast(`VIP Password status: ${item.status}`, "info");
+          this.showToast(`VIP Key status: ${item.status}`, "info");
         }
       });
     });
     tbody.querySelectorAll('[data-action="delete-prem-key"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deletePremiumKey(btn.dataset.id));
+      btn.addEventListener('click', () => {
+        if (confirm("Delete this VIP license key?")) {
+          store.deletePremiumPassword(btn.dataset.id);
+          this.showToast("VIP key deleted.", "info");
+          this.renderPremiumKeysTable();
+        }
+      });
     });
   }
 
-  // --- 8. PAYMENT METHODS ---
+  // --- PAYMENT METHODS CRUD ---
   renderPaymentsTable() {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
 
     const list = store.getPaymentMethods();
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No payment methods configured.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-dim); padding:20px;">No payment methods configured. Click "+ Add Payment Method" above.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = list.map(m => `
       <tr>
-        <td><strong>${sanitize(m.platform)}</strong></td>
-        <td><span style="font-family:var(--font-code); color:var(--admin-cyan);">${sanitize(m.accountNumber)}</span></td>
+        <td><strong style="color:var(--admin-gold);">${sanitize(m.platform)}</strong></td>
+        <td><span style="font-family:var(--font-code); color:var(--admin-cyan); font-weight:700;">${sanitize(m.accountNumber)}</span></td>
         <td>
-          ${m.showTitle && m.accountTitle ? `<span style="color:var(--admin-gold); font-weight:600;">${sanitize(m.accountTitle)}</span>` : '<span style="color:var(--text-dim);">(Hidden / Not Set)</span>'}
+          ${m.accountTitle ? `<span style="color:#fff; font-weight:600;">${sanitize(m.accountTitle)}</span>` : '<span style="color:var(--text-dim);">(Hidden / Not Set)</span>'}
         </td>
-        <td><span class="badge-tag ${m.active ? 'active' : 'rejected'}">${m.active ? 'ACTIVE' : 'DISABLED'}</span></td>
+        <td><span class="badge-tag ${m.active !== false ? 'active' : 'rejected'}">${m.active !== false ? 'ACTIVE' : 'DISABLED'}</span></td>
         <td>
           <div class="action-btn-group">
             <button class="btn-sm-edit" data-action="edit-payment" data-id="${sanitize(m.id)}">Edit</button>
@@ -532,39 +567,56 @@ class AdminPanel {
       btn.addEventListener('click', () => this.openEditPaymentModal(btn.dataset.id));
     });
     tbody.querySelectorAll('[data-action="delete-payment"]').forEach(btn => {
-      btn.addEventListener('click', () => this.deletePaymentMethod(btn.dataset.id));
+      btn.addEventListener('click', () => {
+        if (confirm("Delete this payment account?")) {
+          store.deletePaymentMethod(btn.dataset.id);
+          this.showToast("Payment method deleted.", "info");
+          this.renderPaymentsTable();
+        }
+      });
     });
   }
 
-  // --- 9. ORDERS ---
+  // --- ORDERS INBOX (GMAIL MUST, WHATSAPP, SCREENSHOT ZOOM, 1-CLICK APPROVE & KEY) ---
   renderOrdersTable() {
     const tbody = document.getElementById('ordersTableBody');
     if (!tbody) return;
 
     const orders = store.getOrders();
     if (orders.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-dim);">No customer orders received yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-dim); padding:24px;">No customer orders received yet.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = orders.map(ord => {
-      const cleanContact = ord.contactNumber.replace(/[^0-9]/g, '');
-      const waLink = `https://wa.me/${cleanContact}`;
+      const cleanContact = (ord.contactNumber || '').replace(/[^0-9]/g, '');
+      const waLink = cleanContact ? `https://wa.me/${cleanContact}` : '';
+      const gmail = sanitize(ord.gmail || '');
 
       return `
         <tr>
           <td><strong style="font-family:var(--font-code); color:var(--admin-cyan);">${sanitize(ord.id)}</strong></td>
           <td>
-            <div style="font-weight:700;">${sanitize(ord.contactNumber)}</div>
-            <a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">
-              💬 Open WhatsApp
-            </a>
+            ${gmail ? `
+              <div style="font-weight:700; color:#fff;">
+                <span style="background:rgba(255, 184, 0, 0.15); color:var(--admin-gold); padding:2px 6px; border-radius:4px; font-size:0.7rem; margin-right:4px;">GMAIL</span>
+                ${gmail}
+              </div>
+              <a href="mailto:${gmail}" style="font-size:0.75rem; color:var(--admin-cyan); text-decoration:none;">✉️ Mailto Buyer</a>
+            ` : '<span style="color:var(--admin-red);">Missing</span>'}
           </td>
-          <td>${sanitize(ord.productTitle)}</td>
-          <td>${sanitize(ord.platform)}</td>
+          <td>
+            <div style="font-weight:700;">${sanitize(ord.contactNumber)}</div>
+            ${cleanContact ? `
+              <a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">
+                💬 Open WhatsApp
+              </a>
+            ` : ''}
+          </td>
+          <td><span style="color:var(--admin-gold); font-weight:600;">${sanitize(ord.platform)}</span></td>
           <td>
             <button class="btn-sm-view" data-action="view-screenshot" data-id="${sanitize(ord.id)}">
-              🔍 View Screenshot
+              🔍 Inspect Proof
             </button>
           </td>
           <td>
@@ -575,10 +627,16 @@ class AdminPanel {
           </td>
           <td>
             <div class="action-btn-group">
-              <button class="btn-sm-edit" data-action="approve-order" data-id="${sanitize(ord.id)}" title="Approve and generate VIP password for this buyer">
-                ✓ Approve & Key
-              </button>
-              <button class="btn-sm-del" data-action="reject-order" data-id="${sanitize(ord.id)}">
+              ${ord.status !== 'approved' ? `
+                <button class="btn-sm-edit" data-action="approve-order" data-id="${sanitize(ord.id)}" style="background:rgba(0,242,152,0.15); border-color:var(--admin-accent); color:var(--admin-accent);" title="Approve payment & issue VIP key">
+                  ✓ Approve & Key
+                </button>
+              ` : `
+                <button class="btn-sm-view" data-action="resend-key" data-id="${sanitize(ord.id)}" title="Re-send key details">
+                  Send Key
+                </button>
+              `}
+              <button class="btn-sm-del" data-action="reject-order" data-id="${sanitize(ord.id)}" title="Reject order">
                 ✗
               </button>
             </div>
@@ -593,8 +651,17 @@ class AdminPanel {
     tbody.querySelectorAll('[data-action="approve-order"]').forEach(btn => {
       btn.addEventListener('click', () => this.approveAndGenerateKey(btn.dataset.id));
     });
+    tbody.querySelectorAll('[data-action="resend-key"]').forEach(btn => {
+      btn.addEventListener('click', () => this.openDispatchPrompt(btn.dataset.id));
+    });
     tbody.querySelectorAll('[data-action="reject-order"]').forEach(btn => {
-      btn.addEventListener('click', () => this.rejectOrder(btn.dataset.id));
+      btn.addEventListener('click', () => {
+        if (confirm("Reject this order?")) {
+          store.updateOrderStatus(btn.dataset.id, 'rejected');
+          this.showToast("Order marked as rejected.", "info");
+          this.renderOrdersTable();
+        }
+      });
     });
   }
 
@@ -608,230 +675,103 @@ class AdminPanel {
     const title = document.getElementById('screenshotModalTitle');
     const info = document.getElementById('screenshotModalOrderInfo');
 
-    if (title) title.innerText = `Payment Proof - ${order.id} (${order.productTitle})`;
-    if (img) img.src = order.screenshot || 'assets/logo.svg';
+    if (title) title.innerText = `Payment Receipt - ${order.id} (${order.platform})`;
+    if (img) img.src = order.screenshot || 'logo.svg';
     if (info) {
       info.innerHTML = `
-        <strong>Customer Contact:</strong> ${sanitize(order.contactNumber)} &nbsp;|&nbsp;
-        <strong>Platform:</strong> ${sanitize(order.platform)} &nbsp;|&nbsp;
+        <strong>Gmail:</strong> ${sanitize(order.gmail)} &nbsp;|&nbsp;
+        <strong>Contact:</strong> ${sanitize(order.contactNumber)} &nbsp;|&nbsp;
+        <strong>Payment Platform:</strong> ${sanitize(order.platform)} &nbsp;|&nbsp;
         <strong>Date:</strong> ${new Date(order.submittedAt).toLocaleString()}
+        ${order.note ? `<div style="margin-top:6px; color:#fff;"><em>Note:</em> ${sanitize(order.note)}</div>` : ''}
       `;
     }
 
     if (modal) modal.classList.add('active');
   }
 
+  // --- 1-CLICK APPROVE ORDER & GENERATE VIP KEY ---
   approveAndGenerateKey(orderId) {
     const order = store.getOrders().find(o => o.id === orderId);
     if (!order) return;
 
-    // Generate random VIP Key
-    const randomKey = 'VIP-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
-    
-    // Save to premium passwords (unlocks entire VIP suite)
+    // Generate clean VIP Key
+    const randomKey = 'VIP-KEY-' + Math.random().toString(36).substring(2, 7).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+
+    // Save key in premium passwords
     store.savePremiumPassword({
       key: randomKey,
-      assignedTo: order.contactNumber,
-      note: `${order.productTitle} (${order.id})`,
+      assignedTo: order.gmail || order.contactNumber,
+      note: `Order ${order.id} (${order.platform})`,
       status: 'active'
     });
 
-    // Update order
+    // Update order status
     store.updateOrderStatus(orderId, 'approved', randomKey);
 
-    // Pre-fill WhatsApp message for admin convenience
-    const cleanNum = order.contactNumber.replace(/[^0-9]/g, '');
-    const msg = encodeURIComponent(`Assalam-o-Alaikum! Aap ka TradingStore VIP payment proof verify ho gya hai.\n\nAap ka VIP Access Password: *${randomKey}*\n\nWebsite par VIP Premium tab par ja kar ye password enter karein aur tamam private TradingView scripts aur systems unlock karein!\nShukriya!`);
-    
-    const waUrl = `https://wa.me/${cleanNum}?text=${msg}`;
-
-    if (confirm(`Order ${order.id} Approved!\n\nGenerated VIP Password: ${randomKey}\n\nKya aap buyer ko WhatsApp message bhejna chahte hain?`)) {
-      window.open(waUrl, '_blank');
-    }
-
-    this.showToast("Order approved & VIP key created!", "success");
+    this.showToast(`Order approved! Generated VIP Key: ${randomKey}`, "success");
     this.renderOrdersTable();
     this.renderStats();
+
+    // Open dispatch prompt
+    this.openDispatchPrompt(orderId);
   }
 
-  rejectOrder(orderId) {
-    if (confirm("Are you sure you want to mark this order as Rejected?")) {
-      store.updateOrderStatus(orderId, 'rejected');
-      this.showToast("Order rejected.", "info");
-      this.renderOrdersTable();
-    }
-  }
+  openDispatchPrompt(orderId) {
+    const order = store.getOrders().find(o => o.id === orderId);
+    if (!order || !order.assignedPassword) return;
 
-  // --- SITE ACCESS PASSWORDS MANAGEMENT ---
-  createNewSitePassword(password, maxDevices, note) {
-    if (!password) {
-      this.showToast("Password cannot be empty.", "error");
-      return;
-    }
+    const key = order.assignedPassword;
+    const cleanNum = (order.contactNumber || '').replace(/[^0-9]/g, '');
+    const gmail = order.gmail || '';
 
-    store.saveSitePassword({
-      password: password.trim(),
-      maxDevices: parseInt(maxDevices, 10) || 1,
-      note: note.trim() || 'Access Pass',
-      usedDevices: [],
-      status: 'active'
-    });
+    const msgText = `Assalam-o-Alaikum!\n\nAap ka payment proof verify ho gya hai.\n\nAap ka VIP Premium Access Key: *${key}*\n\nWebsite par Premium tab open kr k yeh key enter karein aur تمام VIP Bots, Books aur Courses unlock karein!\nShukriya!`;
 
-    this.showToast("Site Access Password created with device limit!", "success");
-    this.renderSitePasswordsTable();
-  }
+    const waUrl = cleanNum ? `https://wa.me/${cleanNum}?text=${encodeURIComponent(msgText)}` : '';
+    const mailUrl = gmail ? `mailto:${gmail}?subject=${encodeURIComponent("TradingStore VIP Premium Access Key")}&body=${encodeURIComponent(msgText)}` : '';
 
-  resetPasswordDevices(passwordId) {
-    if (confirm("Reset active devices for this password? The user will be able to register fresh devices.")) {
-      store.resetPasswordDevices(passwordId);
-      this.showToast("Device list cleared for this password.", "success");
-      this.renderSitePasswordsTable();
-    }
-  }
+    let actionPrompt = `Order ${order.id} Approved!\n\nGenerated VIP Key:\n${key}\n\n`;
+    if (cleanNum) actionPrompt += `1. WhatsApp to: ${cleanNum}\n`;
+    if (gmail) actionPrompt += `2. Gmail to: ${gmail}\n`;
 
-  deleteSitePassword(id) {
-    if (confirm("Delete this access password? Users using it will lose access.")) {
-      store.deleteSitePassword(id);
-      this.showToast("Access password deleted.", "info");
-      this.renderSitePasswordsTable();
-    }
-  }
-
-  deletePremiumKey(id) {
-    if (confirm("Delete this VIP key?")) {
-      store.deletePremiumPassword(id);
-      this.showToast("VIP key deleted.", "info");
-      this.renderPremiumKeysTable();
-    }
-  }
-
-  // --- GATEKEEPER & CHANNEL LINKS MANAGEMENT ---
-  renderSocialLinksSection() {
-    const tableBody = document.getElementById('socialLinksTableBody');
-    const previewContainer = document.getElementById('adminGatekeeperLivePreview');
-    const links = store.getSocialLinks();
-    const gkConfig = store.getGatekeeperConfig();
-
-    // 1. Populate Gatekeeper Rules form inputs
-    const enabledInput = document.getElementById('gkConfigEnabled');
-    const socialReqInput = document.getElementById('gkConfigSocialReq');
-    const passReqInput = document.getElementById('gkConfigPasswordReq');
-    const stealthInput = document.getElementById('gkConfigStealthSec');
-
-    if (enabledInput) enabledInput.checked = gkConfig.enabled !== false;
-    if (socialReqInput) socialReqInput.checked = gkConfig.socialVerificationRequired !== false;
-    if (passReqInput) passReqInput.checked = gkConfig.passwordUnlockRequired !== false;
-    if (stealthInput) stealthInput.value = gkConfig.minEngagementSeconds || 8;
-
-    // 2. Render Channels Table Body
-    if (tableBody) {
-      if (!links || links.length === 0) {
-        tableBody.innerHTML = `
-          <tr>
-            <td colspan="5" style="text-align:center; padding:30px; color:var(--text-dim);">
-              No channels configured yet. Click <strong>+ Add Channel Link</strong> above to add Telegram, WhatsApp, YouTube, etc.
-            </td>
-          </tr>
-        `;
-      } else {
-        const platformColors = {
-          telegram: { bg: 'rgba(0, 136, 204, 0.2)', border: '#0088cc', text: '#2AABEE', name: 'Telegram' },
-          whatsapp: { bg: 'rgba(37, 211, 102, 0.2)', border: '#25d366', text: '#25D366', name: 'WhatsApp' },
-          youtube: { bg: 'rgba(255, 0, 0, 0.2)', border: '#ff0000', text: '#ff5555', name: 'YouTube' },
-          discord: { bg: 'rgba(88, 101, 242, 0.2)', border: '#5865f2', text: '#7289da', name: 'Discord' },
-          instagram: { bg: 'rgba(225, 48, 108, 0.2)', border: '#e1306c', text: '#f56040', name: 'Instagram' },
-          twitter: { bg: 'rgba(29, 155, 240, 0.2)', border: '#1d9bf0', text: '#1d9bf0', name: 'Twitter / X' },
-          tiktok: { bg: 'rgba(254, 44, 85, 0.2)', border: '#fe2c55', text: '#fe2c55', name: 'TikTok' },
-          custom: { bg: 'rgba(0, 242, 152, 0.2)', border: 'var(--admin-accent)', text: 'var(--admin-accent)', name: 'Custom' }
-        };
-
-        tableBody.innerHTML = links.map(link => {
-          const p = (link.platform || 'custom').toLowerCase();
-          const badge = platformColors[p] || platformColors.custom;
-          const isActive = link.active !== false;
-
-          return `
-            <tr>
-              <td>
-                <span style="background:${badge.bg}; border:1px solid ${badge.border}; color:${badge.text}; padding:3px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">
-                  ${badge.name}
-                </span>
-              </td>
-              <td><strong>${sanitize(link.title)}</strong></td>
-              <td>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <a href="${sanitize(link.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--admin-accent); font-family:var(--font-mono); font-size:0.8rem; text-decoration:none;">
-                    ${sanitize(link.url.length > 40 ? link.url.substring(0, 37) + '...' : link.url)}
-                  </a>
-                  <button type="button" class="btn-copy-small" onclick="window.adminPanel.copyText('${sanitize(link.url)}')">Copy</button>
-                </div>
-              </td>
-              <td>
-                <button type="button" class="btn-sm-edit" onclick="window.adminPanel.toggleSocialLink('${sanitize(link.id)}')" 
-                  style="${isActive 
-                    ? 'background:rgba(0,242,152,0.15); border-color:var(--admin-accent); color:var(--admin-accent);' 
-                    : 'background:rgba(255,59,105,0.15); border-color:#ff3b69; color:#ff6b8b;'} padding:4px 10px; font-size:0.78rem; font-weight:700;">
-                  ${isActive ? '✓ Shown (Required)' : '✕ Hidden (Skipped)'}
-                </button>
-              </td>
-              <td>
-                <div style="display:flex; gap:6px;">
-                  <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openEditSocialModal('${sanitize(link.id)}')">Edit</button>
-                  <button type="button" class="btn-sm-danger" onclick="window.adminPanel.deleteSocialLink('${sanitize(link.id)}')">Delete</button>
-                </div>
-              </td>
-            </tr>
-          `;
-        }).join('');
+    if (confirm(actionPrompt + `\nKya aap buyer ko WhatsApp ya Email par message send krna chahte hain?`)) {
+      if (cleanNum) {
+        window.open(waUrl, '_blank');
+      } else if (gmail) {
+        window.open(mailUrl, '_blank');
       }
     }
-
-    // 3. Render Live Gatekeeper Visitor Preview
-    if (previewContainer) {
-      const activeLinks = store.getActiveSocialLinks();
-      previewContainer.innerHTML = `
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
-          <span style="font-size:1.4rem;">🔐</span>
-          <div>
-            <h4 style="color:#fff; font-family:var(--font-head); font-size:1.1rem; margin:0;">VIP Portal Verification</h4>
-            <p style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">Live Visitor Preview (${activeLinks.length} active channel(s))</p>
-          </div>
-        </div>
-
-        ${activeLinks.length === 0 ? `
-          <div style="background:rgba(255,59,105,0.1); border:1px solid #ff3b69; border-radius:8px; padding:12px; color:#ff8fa3; font-size:0.85rem; text-align:center;">
-            ⚠️ All channels are currently hidden! Visitors will enter directly or use password.
-          </div>
-        ` : `
-          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-            ${activeLinks.map((l, i) => `
-              <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.04); border:1px solid var(--admin-border); border-radius:8px; padding:10px 14px; font-size:0.88rem; color:#fff;">
-                <span>${i + 1}. ${sanitize(l.title)}</span>
-                <span style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:10px; font-size:0.72rem; color:var(--text-dim);">8s Stealth</span>
-              </div>
-            `).join('')}
-          </div>
-          <button type="button" disabled style="width:100%; padding:10px; background:linear-gradient(135deg, var(--admin-accent), #00c97b); border:none; border-radius:6px; color:#000; font-weight:700; font-size:0.88rem; opacity:0.8; cursor:not-allowed;">
-            Confirm & Enter Site (${activeLinks.length} Channels Required)
-          </button>
-        `}
-      `;
-    }
   }
 
-  toggleSocialLink(linkId) {
-    const updated = store.toggleSocialLinkActive(linkId);
-    if (updated) {
-      this.showToast(`Channel "${updated.title}" is now ${updated.active ? 'Visible & Required' : 'Hidden'}!`, "success");
-      this.renderSocialLinksSection();
-    }
+  // --- GENERIC ITEM MODAL CONTROLLER (BOTS, BOOKS, COURSES, PREM BOTS, PREM BOOKS, PREM COURSES) ---
+  openAddModal(type) {
+    this.activeModalType = type;
+    this.editingItem = null;
+    this._showModalForm(type);
   }
 
-  deleteSocialLink(linkId) {
-    if (!confirm("Are you sure you want to remove this channel link?")) return;
-    store.deleteSocialLink(linkId);
-    this.showToast("Channel link removed.", "info");
-    this.renderSocialLinksSection();
+  openEditItemModal(type, itemId) {
+    this.activeModalType = type;
+    let item = null;
+
+    if (type === 'bot') item = store.getBots().find(b => b.id === itemId);
+    else if (type === 'book') item = store.getBooks().find(b => b.id === itemId);
+    else if (type === 'course') item = store.getCourses().find(c => c.id === itemId);
+    else if (type === 'premBot') item = store.getPremiumBots().find(b => b.id === itemId);
+    else if (type === 'premBook') item = store.getPremiumBooks().find(b => b.id === itemId);
+    else if (type === 'premCourse') item = store.getPremiumCourses().find(c => c.id === itemId);
+
+    if (!item) return;
+    this.editingItem = item;
+    this._showModalForm(type);
+  }
+
+  openEditPaymentModal(payId) {
+    this.activeModalType = 'payment';
+    const item = store.getPaymentMethods().find(m => m.id === payId);
+    if (!item) return;
+    this.editingItem = item;
+    this._showModalForm('payment');
   }
 
   openEditSocialModal(linkId) {
@@ -842,140 +782,239 @@ class AdminPanel {
     this._showModalForm('socialLink');
   }
 
-  // --- SETTINGS & BRANDING ---
-  renderSettingsForm() {
-    const settings = store.getSiteSettings();
-    const gkConfig = store.getGatekeeperConfig();
+  _showModalForm(type) {
+    const modal = document.getElementById('adminGenericModal');
+    const title = document.getElementById('adminModalTitle');
+    const body = document.getElementById('adminModalDynamicBody');
+    const item = this.editingItem;
+    const isEdit = !!item;
+    const presets = store.getCuratedPresets();
 
-    const appNameInput = document.getElementById('settingsAppName');
-    const taglineInput = document.getElementById('settingsTagline');
-    const logoUrlInput = document.getElementById('settingsLogoUrl');
-    const waNumInput = document.getElementById('settingsWhatsAppNumber');
-    const currInput = document.getElementById('settingsCurrency');
-    const usdToPkrInput = document.getElementById('settingsUsdToPkr');
-    const gkModeInput = document.getElementById('settingsGatekeeperMode');
-    const adminNewUser = document.getElementById('adminNewUsername');
+    if (modal) modal.classList.add('active');
 
-    if (appNameInput) appNameInput.value = settings.appName || 'TradingStore';
-    if (taglineInput) taglineInput.value = settings.tagline || '';
-    if (logoUrlInput) logoUrlInput.value = settings.logoUrl || '';
-    if (waNumInput) waNumInput.value = settings.whatsappSupportNumber || '923001234567';
-    if (currInput) currInput.value = (settings.currency || 'USD').toUpperCase();
-    if (usdToPkrInput) usdToPkrInput.value = settings.usdToPkrRate || 280;
-    if (gkModeInput) gkModeInput.value = gkConfig.mode || 'soft';
-    if (adminNewUser) adminNewUser.value = settings.adminUsername || 'admin';
+    // 1. CONTENT ITEMS (BOT, BOOK, COURSE, PREM BOT, PREM BOOK, PREM COURSE)
+    if (['bot', 'book', 'course', 'premBot', 'premBook', 'premCourse'].includes(type)) {
+      const typeTitles = {
+        bot: "Free Trading Bot / Script",
+        book: "Free Trading Book (PDF)",
+        course: "Free Video Course / Zip",
+        premBot: "👑 VIP Premium Bot / Script",
+        premBook: "👑 VIP Premium Book (PDF)",
+        premCourse: "👑 VIP Premium Video Course"
+      };
 
-    // Clear password inputs
-    const curPass = document.getElementById('adminCurrentPassword');
-    const newPass = document.getElementById('adminNewPassword');
-    const confPass = document.getElementById('adminConfirmPassword');
-    if (curPass) curPass.value = '';
-    if (newPass) newPass.value = '';
-    if (confPass) confPass.value = '';
+      title.innerText = (isEdit ? "Edit " : "Add New ") + typeTitles[type];
+
+      const currentLogo = item ? (item.logo || item.cover || item.thumbnail || '') : '';
+      const currentLink = item ? (item.downloadLink || item.tradingViewLink || item.accessLink || '') : '';
+
+      body.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Item Title / Name *</label>
+          <input type="text" id="m_item_title" class="form-input" required 
+            placeholder="e.g. ICT Silver Bullet Matrix Bot ya SMC Bible PDF" 
+            value="${isEdit ? sanitize(item.title) : ''}" />
+          <div class="form-hint">Yeh title customer k samne readable font me card par show hoga.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Download / Open Link (MediaFire ya Google Drive URL) *</label>
+          <input type="url" id="m_item_link" class="form-input" required 
+            placeholder="https://www.mediafire.com/file/... ya https://drive.google.com/file/..." 
+            value="${sanitize(currentLink)}" />
+          <div class="form-hint">Card par click krny se customer direct is MediaFire / Google Drive link par redirect ho jaye ga.</div>
+        </div>
+
+        ${this.renderImagePickerControl(
+          'm_item_logo',
+          currentLogo,
+          'Logo / Image *',
+          'Phone gallery ya computer se photo upload karein, web link paste karein, ya curated trading chart presets me se pick karein.',
+          presets
+        )}
+
+        <div class="form-group">
+          <label class="form-label">Category / Tag (Optional)</label>
+          <input type="text" id="m_item_category" class="form-input" 
+            placeholder="e.g. Scalping, SMC / ICT, Price Action, Psychology, Mentorship" 
+            value="${isEdit ? sanitize(item.category || '') : 'General'}" />
+        </div>
+      `;
+
+      this.bindImagePickerEvents('m_item_logo');
+
+    } else if (type === 'payment') {
+      title.innerText = isEdit ? "Edit Payment Account" : "Add Payment Account";
+      body.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Network / Platform Name *</label>
+          <input type="text" id="m_pay_platform" class="form-input" required 
+            placeholder="e.g. JazzCash, EasyPaisa, Binance (USDT TRC20), Meezan Bank" 
+            value="${isEdit ? sanitize(item.platform) : ''}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Number / Wallet Address *</label>
+          <input type="text" id="m_pay_number" class="form-input" required 
+            placeholder="e.g. 03001234567 ya TRC20 Wallet Address" 
+            value="${isEdit ? sanitize(item.accountNumber) : ''}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Name / Title (Optional)</label>
+          <input type="text" id="m_pay_title" class="form-input" 
+            placeholder="e.g. Muhammad Raza" 
+            value="${isEdit ? sanitize(item.accountTitle || '') : ''}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Instructions for Buyer (Optional)</label>
+          <textarea id="m_pay_instr" class="form-input" rows="2" 
+            placeholder="e.g. Transfer kr k screenshot attach karein.">${isEdit ? sanitize(item.instructions || '') : ''}</textarea>
+        </div>
+      `;
+
+    } else if (type === 'socialLink') {
+      title.innerText = isEdit ? "Edit Channel Link" : "Add New Channel Link";
+      body.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Platform Type *</label>
+          <select id="m_social_platform" class="form-input" style="background:#0d1322; border:1px solid var(--admin-border); color:#fff; padding:10px; width:100%; border-radius:6px;">
+            <option value="telegram" ${isEdit && item.platform === 'telegram' ? 'selected' : ''}>Telegram Channel / Group</option>
+            <option value="whatsapp" ${isEdit && item.platform === 'whatsapp' ? 'selected' : ''}>WhatsApp Channel / Group</option>
+            <option value="youtube" ${isEdit && item.platform === 'youtube' ? 'selected' : ''}>YouTube Channel</option>
+            <option value="facebook" ${isEdit && item.platform === 'facebook' ? 'selected' : ''}>Facebook Page</option>
+            <option value="custom" ${isEdit && item.platform === 'custom' ? 'selected' : ''}>Custom Channel Link</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Channel Display Name / Title *</label>
+          <input type="text" id="m_social_title" class="form-input" required placeholder="e.g. Join Official WhatsApp Channel" value="${isEdit ? sanitize(item.title) : ''}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Link / URL *</label>
+          <input type="url" id="m_social_url" class="form-input" required placeholder="https://..." value="${isEdit ? sanitize(item.url) : ''}" />
+        </div>
+        <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="m_social_active" ${!isEdit || item.active !== false ? 'checked' : ''} style="accent-color: var(--admin-accent); width:18px; height:18px;" />
+            <span style="font-size:0.88rem; color:#fff;"><strong>Active (Shown on Site Entry Gate)</strong></span>
+          </label>
+        </div>
+      `;
+    }
   }
 
-  saveSettingsFromForm() {
-    const appName = document.getElementById('settingsAppName')?.value.trim();
-    const tagline = document.getElementById('settingsTagline')?.value.trim();
-    const logoUrl = document.getElementById('settingsLogoUrl')?.value.trim();
-    const waNum = document.getElementById('settingsWhatsAppNumber')?.value.trim() || '923001234567';
-    const curr = document.getElementById('settingsCurrency')?.value || 'USD';
-    const usdToPkr = parseFloat(document.getElementById('settingsUsdToPkr')?.value) || 280;
-    const gkMode = document.getElementById('settingsGatekeeperMode')?.value || 'soft';
+  saveGenericModal() {
+    const type = this.activeModalType;
 
-    const current = store.getSiteSettings();
-    store.saveSiteSettings({
-      ...current,
-      appName: appName || "TradingStore",
-      tagline: tagline || "TradingView Scripts & Academy",
-      logoUrl: logoUrl,
-      whatsappSupportNumber: waNum,
-      currency: curr,
-      usdToPkrRate: usdToPkr
-    });
+    // 1. Catalog items
+    if (['bot', 'book', 'course', 'premBot', 'premBook', 'premCourse'].includes(type)) {
+      const title = document.getElementById('m_item_title')?.value.trim();
+      const link = document.getElementById('m_item_link')?.value.trim();
+      const logo = document.getElementById('m_item_logo')?.value.trim() || 'logo.svg';
+      const category = document.getElementById('m_item_category')?.value.trim() || 'General';
 
-    const currentGk = store.getGatekeeperConfig();
-    store.saveGatekeeperConfig({
-      ...currentGk,
-      mode: gkMode,
-      guestBrowsingAllowed: gkMode === 'soft' || gkMode === 'disabled',
-      enabled: gkMode !== 'disabled'
-    });
+      if (!title) return alert("Title / Name is required!");
+      if (!link) return alert("Download Link (MediaFire / Google Drive) is required!");
 
-    this.showToast("Branding, WhatsApp and security settings saved successfully!", "success");
+      const itemPayload = {
+        id: this.editingItem ? this.editingItem.id : undefined,
+        title: title,
+        downloadLink: link,
+        logo: logo,
+        category: category
+      };
+
+      if (type === 'bot') store.saveBot(itemPayload);
+      else if (type === 'book') store.saveBook(itemPayload);
+      else if (type === 'course') store.saveCourse(itemPayload);
+      else if (type === 'premBot') store.savePremiumBot(itemPayload);
+      else if (type === 'premBook') store.savePremiumBook(itemPayload);
+      else if (type === 'premCourse') store.savePremiumCourse(itemPayload);
+
+      this.closeGenericModal();
+      this.showToast("Item saved successfully!", "success");
+      this.renderCurrentSection();
+
+    } else if (type === 'payment') {
+      const platform = document.getElementById('m_pay_platform')?.value.trim();
+      const num = document.getElementById('m_pay_number')?.value.trim();
+      const title = document.getElementById('m_pay_title')?.value.trim();
+      const instr = document.getElementById('m_pay_instr')?.value.trim();
+
+      if (!platform || !num) return alert("Platform Name and Account Number are required!");
+
+      store.savePaymentMethod({
+        id: this.editingItem ? this.editingItem.id : undefined,
+        platform: platform,
+        accountNumber: num,
+        accountTitle: title,
+        showTitle: !!title,
+        instructions: instr,
+        active: true
+      });
+
+      this.closeGenericModal();
+      this.showToast("Payment method saved!", "success");
+      this.renderPaymentsTable();
+
+    } else if (type === 'socialLink') {
+      const platform = document.getElementById('m_social_platform')?.value || 'custom';
+      const title = document.getElementById('m_social_title')?.value.trim();
+      const url = document.getElementById('m_social_url')?.value.trim();
+      const active = document.getElementById('m_social_active')?.checked;
+
+      if (!title || !url) return alert("Title and URL are required!");
+
+      store.saveSocialLink({
+        id: this.editingItem ? this.editingItem.id : undefined,
+        platform: platform,
+        title: title,
+        url: url,
+        active: active
+      });
+
+      this.closeGenericModal();
+      this.showToast("Channel link saved!", "success");
+      this.renderSocialLinksTable();
+    }
   }
 
-  saveAdminCredentials() {
-    const curPassInput = document.getElementById('adminCurrentPassword');
-    const newUserInput = document.getElementById('adminNewUsername');
-    const newPassInput = document.getElementById('adminNewPassword');
-    const confPassInput = document.getElementById('adminConfirmPassword');
-    const alertBox = document.getElementById('adminSecurityAlert');
+  closeGenericModal() {
+    const modal = document.getElementById('adminGenericModal');
+    if (modal) modal.classList.remove('active');
+    this.editingItem = null;
+    this.activeModalType = null;
+  }
 
-    const curPass = curPassInput.value.trim();
-    const newUser = newUserInput.value.trim();
-    const newPass = newPassInput.value.trim();
-    const confPass = confPassInput.value.trim();
+  deleteItem(type, itemId) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
 
-    const settings = store.getSiteSettings();
+    if (type === 'bot') store.deleteBot(itemId);
+    else if (type === 'book') store.deleteBook(itemId);
+    else if (type === 'course') store.deleteCourse(itemId);
+    else if (type === 'premBot') store.deletePremiumBot(itemId);
+    else if (type === 'premBook') store.deletePremiumBook(itemId);
+    else if (type === 'premCourse') store.deletePremiumCourse(itemId);
 
-    // 1. Verify current password
-    if (curPass !== settings.adminPassword) {
-      if (alertBox) {
-        alertBox.style.display = 'block';
-        alertBox.style.background = 'rgba(255, 59, 105, 0.15)';
-        alertBox.style.border = '1px solid #ff3b69';
-        alertBox.style.color = '#ff6b8b';
-        alertBox.innerText = 'Security Verification Failed: Current password is incorrect!';
-      }
-      this.showToast("Current password incorrect! Access denied.", "error");
-      return false;
+    this.showToast("Item deleted.", "info");
+    this.renderCurrentSection();
+  }
+
+  toggleSocialLink(linkId) {
+    const updated = store.toggleSocialLinkActive(linkId);
+    if (updated) {
+      this.showToast(`Channel is now ${updated.active ? 'Visible & Required' : 'Hidden'}!`, "success");
+      this.renderSocialLinksTable();
     }
+  }
 
-    // 2. Validate new password match
-    if (!newUser) {
-      alert("Admin username cannot be blank!");
-      return false;
-    }
-
-    if (!newPass || newPass.length < 3) {
-      alert("New password must be at least 3 characters long!");
-      return false;
-    }
-
-    if (newPass !== confPass) {
-      if (alertBox) {
-        alertBox.style.display = 'block';
-        alertBox.style.background = 'rgba(255, 59, 105, 0.15)';
-        alertBox.style.border = '1px solid #ff3b69';
-        alertBox.style.color = '#ff6b8b';
-        alertBox.innerText = 'New Password and Confirmation do not match!';
-      }
-      this.showToast("Passwords do not match!", "error");
-      return false;
-    }
-
-    // 3. Save new credentials safely
-    store.saveSiteSettings({
-      ...settings,
-      adminUsername: newUser,
-      adminPassword: newPass
-    });
-
-    if (alertBox) {
-      alertBox.style.display = 'block';
-      alertBox.style.background = 'rgba(0, 242, 152, 0.15)';
-      alertBox.style.border = '1px solid var(--admin-accent)';
-      alertBox.style.color = 'var(--admin-accent)';
-      alertBox.innerText = `Success: Admin username updated to "${newUser}" and new password saved.`;
-    }
-
-    curPassInput.value = '';
-    newPassInput.value = '';
-    confPassInput.value = '';
-
-    this.showToast("Admin credentials updated successfully! Keep your password safe.", "success");
-    return true;
+  deleteSocialLink(linkId) {
+    if (!confirm("Delete this channel link?")) return;
+    store.deleteSocialLink(linkId);
+    this.showToast("Channel removed.", "info");
+    this.renderSocialLinksTable();
   }
 
   // --- IMAGE UPLOADER COMPONENT HELPER ---
@@ -993,12 +1032,9 @@ class AdminPanel {
             </div>
             <div class="image-preview-meta">
               <div class="image-preview-status" id="${inputId}_status">
-                ${safeVal ? '✓ Active Image Selected' : 'Standard Logo Active'}
+                ${safeVal ? '✓ Image Loaded' : 'Default Logo Active'}
               </div>
-              <div style="font-size:0.75rem; color:var(--text-dim);">
-                Phone gallery / PC se photo select karein ya neeche direct link paste karein.
-              </div>
-              <div style="display:flex; gap:8px; margin-top:4px; flex-wrap:wrap;">
+              <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
                 <button type="button" class="btn-file-picker" id="${inputId}_btn_file">
                   📁 Device / Gallery Se Pick Karein
                 </button>
@@ -1010,29 +1046,26 @@ class AdminPanel {
             </div>
           </div>
 
-          <div>
+          <div style="margin-top:10px;">
             <label style="font-size:0.75rem; color:var(--text-dim); display:block; margin-bottom:4px;">
               Image Web Link (URL) ya Auto-Loaded Base64:
             </label>
             <input type="text" id="${inputId}" class="form-input" 
-              placeholder="https://... ya uper diye gaye button se direct image upload karein" 
+              placeholder="https://... ya uper diye gaye button se direct photo upload karein" 
               value="${safeVal}" />
           </div>
 
           ${presets && presets.length > 0 ? `
-            <div>
+            <div style="margin-top:10px;">
               <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:4px;">
                 Curated Presets (1-Click Select):
               </div>
               <div class="preset-pills-wrap">
-                ${presets.map(p => {
-                  const labelText = p.title || p.label || 'Preset';
-                  return `
-                    <button type="button" class="preset-pill-btn" data-target="${inputId}" data-url="${sanitize(p.url)}" title="${sanitize(labelText)}">
-                      ${sanitize(labelText)}
-                    </button>
-                  `;
-                }).join('')}
+                ${presets.map(p => `
+                  <button type="button" class="preset-pill-btn" data-target="${inputId}" data-url="${sanitize(p.url)}" title="${sanitize(p.label)}">
+                    ${sanitize(p.label)}
+                  </button>
+                `).join('')}
               </div>
             </div>
           ` : ''}
@@ -1054,24 +1087,17 @@ class AdminPanel {
     const previewImg = document.getElementById(`${inputId}_preview`);
     const statusEl = document.getElementById(`${inputId}_status`);
 
-    // File picker click
     if (fileBtn && fileInput) {
       fileBtn.addEventListener('click', () => fileInput.click());
     }
 
-    // Read selected file as base64
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-          alert("Sirf image files (PNG, JPG, JPEG, WEBP) select karein.");
-          return;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-          alert("Image file size maximum 5MB honi chahiye.");
+          alert("Sirf image files (PNG, JPG, WEBP) select karein.");
           return;
         }
 
@@ -1080,33 +1106,30 @@ class AdminPanel {
           const base64 = event.target.result;
           if (textInput) textInput.value = base64;
           if (previewImg) previewImg.src = base64;
-          if (statusEl) statusEl.innerText = "✓ Device Photo Uploaded!";
-          this.showToast("Image loaded from device successfully!", "success");
+          if (statusEl) statusEl.innerText = "✓ Photo Loaded from Device!";
+          this.showToast("Image selected successfully!", "success");
         };
         reader.readAsDataURL(file);
       });
     }
 
-    // Text input manual typing / paste
     if (textInput) {
       textInput.addEventListener('input', (e) => {
         const val = e.target.value.trim();
         if (previewImg) previewImg.src = val || 'logo.svg';
-        if (statusEl) statusEl.innerText = val ? "✓ Custom URL Loaded" : "Standard Logo Active";
+        if (statusEl) statusEl.innerText = val ? "✓ Custom URL Loaded" : "Default Logo Active";
       });
     }
 
-    // Clear / Reset image
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         if (textInput) textInput.value = '';
         if (fileInput) fileInput.value = '';
         if (previewImg) previewImg.src = 'logo.svg';
-        if (statusEl) statusEl.innerText = "Standard Logo Active";
+        if (statusEl) statusEl.innerText = "Default Logo Active";
       });
     }
 
-    // Preset pills click
     wrap.querySelectorAll('.preset-pill-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const targetUrl = btn.dataset.url;
@@ -1117,791 +1140,319 @@ class AdminPanel {
     });
   }
 
-  // --- GENERIC CRUD MODAL CONTROLLER ---
-  openAddModal(type) {
-    this.activeModalType = type;
-    this.editingItem = null;
-    this._showModalForm(type);
+  // --- SETTINGS & BRANDING ---
+  renderSettingsForm() {
+    const settings = store.getSiteSettings();
+    const appNameInput = document.getElementById('settingsAppName');
+    const taglineInput = document.getElementById('settingsTagline');
+    const logoUrlInput = document.getElementById('settingsLogoUrl');
+    const waNumInput = document.getElementById('settingsWhatsAppNumber');
+    const adminNewUser = document.getElementById('adminNewUsername');
+
+    if (appNameInput) appNameInput.value = settings.appName || 'TradingStore';
+    if (taglineInput) taglineInput.value = settings.tagline || '';
+    if (logoUrlInput) logoUrlInput.value = settings.logoUrl || '';
+    if (waNumInput) waNumInput.value = settings.whatsappSupportNumber || '923001234567';
+    if (adminNewUser) adminNewUser.value = settings.adminUsername || 'admin';
+
+    // Clear password inputs
+    const curPass = document.getElementById('adminCurrentPassword');
+    const newPass = document.getElementById('adminNewPassword');
+    const confPass = document.getElementById('adminConfirmPassword');
+    if (curPass) curPass.value = '';
+    if (newPass) newPass.value = '';
+    if (confPass) confPass.value = '';
   }
 
-  openEditProductModal(type, itemId) {
-    this.activeModalType = type;
-    let item = null;
+  saveSettingsFromForm() {
+    const appName = document.getElementById('settingsAppName')?.value.trim();
+    const tagline = document.getElementById('settingsTagline')?.value.trim();
+    const logoUrl = document.getElementById('settingsLogoUrl')?.value.trim();
+    const waNum = document.getElementById('settingsWhatsAppNumber')?.value.trim() || '923001234567';
 
-    if (type === 'bot') item = store.getBots().find(b => b.id === itemId);
-    else if (type === 'book') item = store.getBooks().find(b => b.id === itemId);
-    else if (type === 'course') item = store.getCourses().find(c => c.id === itemId);
-    else if (type === 'premium') item = store.getPremium().find(p => p.id === itemId);
+    const current = store.getSiteSettings();
+    store.saveSiteSettings({
+      ...current,
+      appName: appName || "TradingStore",
+      tagline: tagline || "Trading Bots, Books, Courses & VIP Academy",
+      logoUrl: logoUrl,
+      whatsappSupportNumber: waNum
+    });
 
-    if (!item) return;
-    this.editingItem = item;
-    this._showModalForm(type);
+    this.showToast("Branding settings saved successfully!", "success");
   }
 
-  openEditPaymentModal(payId) {
-    this.activeModalType = 'payment';
-    const item = store.getPaymentMethods().find(m => m.id === payId);
-    if (!item) return;
-    this.editingItem = item;
-    this._showModalForm('payment');
-  }
+  saveAdminCredentials() {
+    const curPassInput = document.getElementById('adminCurrentPassword');
+    const newUserInput = document.getElementById('adminNewUsername');
+    const newPassInput = document.getElementById('adminNewPassword');
+    const confPassInput = document.getElementById('adminConfirmPassword');
+    const alertBox = document.getElementById('adminSecurityAlert');
 
-  _showModalForm(type) {
-    const modal = document.getElementById('adminGenericModal');
-    const title = document.getElementById('adminModalTitle');
-    const body = document.getElementById('adminModalDynamicBody');
-    const item = this.editingItem;
-    const isEdit = !!item;
-    const presets = store.getCuratedPresets();
+    const curPass = curPassInput.value.trim();
+    const newUser = newUserInput.value.trim();
+    const newPass = newPassInput.value.trim();
+    const confPass = confPassInput.value.trim();
 
-    if (modal) modal.classList.add('active');
+    const settings = store.getSiteSettings();
 
-    if (type === 'bot') {
-      title.innerText = isEdit ? "Edit TradingView Bot / Indicator" : "Add New TradingView Bot / Indicator";
-      const currentFeatures = (item?.features || ["Non-Repainting Signals", "Dynamic Stop Loss & Take Profit", "TradingView Alert Ready"]).join('\n');
-
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Indicator / Bot Title *</label>
-          <input type="text" id="m_bot_title" class="form-input" required 
-            placeholder="e.g. Apex Scalper v4 Pro (TradingView Indicator)" 
-            value="${isEdit ? sanitize(item.title) : ''}" />
-          <div class="form-hint">Display title that appears in customer catalog and search results.</div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Category</label>
-            <select id="m_bot_cat" class="form-input">
-              <option value="scalping" ${isEdit && item.category === 'scalping' ? 'selected' : ''}>Scalping</option>
-              <option value="smc" ${isEdit && item.category === 'smc' ? 'selected' : ''}>Smart Money Concepts (SMC)</option>
-              <option value="swing" ${isEdit && item.category === 'swing' ? 'selected' : ''}>Swing Trading</option>
-              <option value="priceaction" ${isEdit && item.category === 'priceaction' ? 'selected' : ''}>Price Action</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Display Badge / Tag</label>
-            <input type="text" id="m_bot_badge" class="form-input" 
-              placeholder="e.g. 🔥 HOT or Scalping Beast or New" 
-              value="${isEdit ? sanitize(item.badge || '') : '🔥 Top Rated'}" />
-          </div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Target Markets</label>
-            <input type="text" id="m_bot_market" class="form-input" 
-              placeholder="e.g. Crypto & Forex (BTC, ETH, Gold, EURUSD)" 
-              value="${isEdit ? sanitize(item.market || '') : 'Crypto, Forex & Gold'}" />
-          </div>
-          <div>
-            <label class="form-label">Recommended Timeframes</label>
-            <input type="text" id="m_bot_tf" class="form-input" 
-              placeholder="e.g. 1m, 5m, 15m (Scalping & Intraday)" 
-              value="${isEdit ? sanitize(item.timeframe || '') : '1m - 5m - 15m'}" />
-          </div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Win Rate %</label>
-            <input type="text" id="m_bot_win" class="form-input" 
-              placeholder="e.g. 84.5% Backtested" 
-              value="${isEdit ? sanitize(item.winRate || '') : '82.5%'}" />
-          </div>
-          <div>
-            <label class="form-label">Access Model</label>
-            <select id="m_bot_isFree" class="form-input">
-              <option value="true" ${!isEdit || item.isFree ? 'selected' : ''}>Free Script (Direct TradingView Access)</option>
-              <option value="false" ${isEdit && !item.isFree ? 'selected' : ''}>VIP Premium Algo (Requires License)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">TradingView Script URL *</label>
-          <input type="url" id="m_bot_link" class="form-input" required 
-            placeholder="https://www.tradingview.com/script/xyz-apex-scalper/" 
-            value="${isEdit ? sanitize(item.tradingViewLink || '') : ''}" />
-          <div class="form-hint">Customer clicking 'Open TradingView' will be redirected to this link.</div>
-        </div>
-
-        ${this.renderImagePickerControl(
-          'm_bot_logo', 
-          isEdit ? item.logo : '', 
-          'Indicator Logo / Thumbnail *', 
-          'Select from your mobile/laptop gallery, paste an image URL, or choose a curated chart preset.',
-          presets
-        )}
-
-        <div class="form-group">
-          <label class="form-label">Core Features & Signals (1 Feature per line)</label>
-          <textarea id="m_bot_features" class="form-input" rows="3" 
-            placeholder="Har line me aik feature likhein:&#10;Non-Repainting Real-Time Buy/Sell Signals&#10;Automated Dynamic Stop Loss & Take Profit Levels&#10;Mobile Notification & Sound Alerts">${sanitize(currentFeatures)}</textarea>
-          <div class="form-hint">Har line website par alag bullet point / badge ban kar show hogi.</div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Strategy Overview & Rules</label>
-          <textarea id="m_bot_desc" class="form-input" rows="3" 
-            placeholder="Strategy k rules, entry criteria, aur confirmation indicators explain karein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
-        </div>
-      `;
-
-      this.bindImagePickerEvents('m_bot_logo');
-
-    } else if (type === 'book') {
-      title.innerText = isEdit ? "Edit Trading Book / PDF" : "Add New Trading Book / PDF";
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Book Title *</label>
-          <input type="text" id="m_book_title" class="form-input" required 
-            placeholder="e.g. Price Action Secrets & Candlestick Bible (Urdu/English)" 
-            value="${isEdit ? sanitize(item.title) : ''}" />
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Author / Creator</label>
-            <input type="text" id="m_book_author" class="form-input" 
-              placeholder="e.g. Senior Market Technician" 
-              value="${isEdit ? sanitize(item.author || '') : 'Senior Market Technician'}" />
-          </div>
-          <div>
-            <label class="form-label">Pages / Volume</label>
-            <input type="text" id="m_book_pages" class="form-input" 
-              placeholder="e.g. 185 Pages (High-Definition PDF)" 
-              value="${isEdit ? sanitize(item.pages || '') : '180 Pages'}" />
-          </div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Rating</label>
-            <input type="text" id="m_book_rating" class="form-input" 
-              placeholder="e.g. 4.9 / 5.0" 
-              value="${isEdit ? sanitize(item.rating || '') : '4.9 / 5.0'}" />
-          </div>
-          <div>
-            <label class="form-label">Category</label>
-            <input type="text" id="m_book_cat" class="form-input" 
-              placeholder="e.g. Price Action, Psychology, SMC" 
-              value="${isEdit ? sanitize(item.category || '') : 'Price Action'}" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">PDF Download / Google Drive Link *</label>
-          <input type="url" id="m_book_link" class="form-input" required 
-            placeholder="https://drive.google.com/file/d/.../view?usp=sharing" 
-            value="${isEdit ? sanitize(item.downloadLink || '') : ''}" />
-          <div class="form-hint">Ensure Google Drive file permission is set to 'Anyone with the link can view'.</div>
-        </div>
-
-        ${this.renderImagePickerControl(
-          'm_book_cover', 
-          isEdit ? item.cover : '', 
-          'Book Cover Image *', 
-          'Upload book cover image from your mobile gallery or choose a preset below.',
-          presets
-        )}
-
-        <div class="form-group">
-          <label class="form-label">Book Summary & Overview</label>
-          <textarea id="m_book_desc" class="form-input" rows="3" 
-            placeholder="Kitab k topics (SMC, Wyckoff, Order Blocks, Liquidity Sweeps) detail se likhein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
-        </div>
-      `;
-
-      this.bindImagePickerEvents('m_book_cover');
-
-    } else if (type === 'course') {
-      title.innerText = isEdit ? "Edit Trading Mentorship Course" : "Add New Trading Mentorship Course";
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Course Title *</label>
-          <input type="text" id="m_course_title" class="form-input" required 
-            placeholder="e.g. Institutional ICT & Smart Money Masterclass 2026" 
-            value="${isEdit ? sanitize(item.title) : ''}" />
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Instructor / Mentor</label>
-            <input type="text" id="m_course_inst" class="form-input" 
-              placeholder="e.g. Senior Quantitative Mentor" 
-              value="${isEdit ? sanitize(item.instructor || '') : 'Senior Quantitative Mentor'}" />
-          </div>
-          <div>
-            <label class="form-label">Duration / Video Length</label>
-            <input type="text" id="m_course_dur" class="form-input" 
-              placeholder="e.g. 18 Hours (Full Video Series)" 
-              value="${isEdit ? sanitize(item.duration || '') : '16 Hours'}" />
-          </div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Skill Level</label>
-            <select id="m_course_lvl" class="form-input">
-              <option value="All Levels" ${!isEdit || item.level === 'All Levels' ? 'selected' : ''}>All Levels (Zero to Hero)</option>
-              <option value="Beginner" ${isEdit && item.level === 'Beginner' ? 'selected' : ''}>Beginner</option>
-              <option value="Advanced" ${isEdit && item.level === 'Advanced' ? 'selected' : ''}>Advanced / Institutional</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label">Badge</label>
-            <input type="text" id="m_course_badge" class="form-input" 
-              placeholder="e.g. 🎓 Complete Masterclass" 
-              value="${isEdit ? sanitize(item.badge || '') : '🎓 Complete Masterclass'}" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Video Access Link / Playlist URL *</label>
-          <input type="url" id="m_course_link" class="form-input" required 
-            placeholder="https://youtube.com/playlist?list=... ya Google Drive video folder link" 
-            value="${isEdit ? sanitize(item.accessLink || '') : ''}" />
-          <div class="form-hint">YouTube Playlist, Google Drive Video Folder ya private hosting link.</div>
-        </div>
-
-        ${this.renderImagePickerControl(
-          'm_course_thumb', 
-          isEdit ? item.thumbnail : '', 
-          'Course Thumbnail Image *', 
-          'Upload course thumbnail banner from mobile or laptop or choose a preset.',
-          presets
-        )}
-
-        <div class="form-group">
-          <label class="form-label">Course Description & Syllabus</label>
-          <textarea id="m_course_desc" class="form-input" rows="3" 
-            placeholder="Course syllabus, strategy breakdown, aur students k liye learning path detail karein...">${isEdit ? sanitize(item.description || '') : ''}</textarea>
-        </div>
-      `;
-
-      this.bindImagePickerEvents('m_course_thumb');
-
-    } else if (type === 'premium') {
-      title.innerText = isEdit ? "Edit VIP Premium Script / Suite" : "Add New VIP Premium Script / Suite";
-      const currentFeatures = (item?.features || [
-        "Private Invite-Only PineScript Access",
-        "Non-Repainting Multi-Confluence Algorithm",
-        "Automated Dynamic Risk-Reward Levels",
-        "Lifetime Access & VIP WhatsApp Support"
-      ]).join('\n');
-
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">VIP Algorithm Title *</label>
-          <input type="text" id="m_prem_title" class="form-input" required 
-            placeholder="e.g. APEX ALGO VIP - Institutional Suite (Invite-Only)" 
-            value="${isEdit ? sanitize(item.title) : ''}" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Product Tagline</label>
-          <input type="text" id="m_prem_tagline" class="form-input" 
-            placeholder="e.g. Automated Multi-Confluence Engine with Proprietary Order Flow" 
-            value="${isEdit ? sanitize(item.tagline || '') : ''}" />
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Price in USD ($) *</label>
-            <input type="number" id="m_prem_usd" class="form-input" required 
-              placeholder="49" 
-              value="${isEdit ? item.priceUSD || '' : '49'}" />
-          </div>
-          <div>
-            <label class="form-label">Price in PKR (₨) *</label>
-            <input type="number" id="m_prem_pkr" class="form-input" required 
-              placeholder="13500" 
-              value="${isEdit ? item.pricePKR || '' : '13500'}" />
-          </div>
-        </div>
-
-        <div class="form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div>
-            <label class="form-label">Backtested Win Rate %</label>
-            <input type="text" id="m_prem_win" class="form-input" 
-              placeholder="e.g. 88.5% Verified" 
-              value="${isEdit ? sanitize(item.winRate || '') : '88.5%'}" />
-          </div>
-          <div>
-            <label class="form-label">License Key Protection</label>
-            <select id="m_prem_req_key" class="form-input">
-              <option value="true" selected>Protected by VIP Key (Customer receives key on payment)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">TradingView Private Invite Link *</label>
-          <input type="url" id="m_prem_link" class="form-input" required 
-            placeholder="https://www.tradingview.com/script/... (Private Invite link)" 
-            value="${isEdit ? sanitize(item.scriptLink || '') : ''}" />
-          <div class="form-hint">This link is revealed ONLY when the customer verifies their VIP Password key.</div>
-        </div>
-
-        ${this.renderImagePickerControl(
-          'm_prem_banner', 
-          isEdit ? item.banner : '', 
-          'VIP Product Banner / Mockup *', 
-          'Upload screenshot of chart or high-res algorithm banner.',
-          presets
-        )}
-
-        <div class="form-group">
-          <label class="form-label">VIP Feature List (1 Feature per line)</label>
-          <textarea id="m_prem_features" class="form-input" rows="4" 
-            placeholder="Har line me aik VIP feature likhein:&#10;Private Invite-Only PineScript Access&#10;Zero Repaint Algorithm with Confluence Filters&#10;Lifetime Access & VIP WhatsApp Support">${sanitize(currentFeatures)}</textarea>
-          <div class="form-hint">Har line customer k samne green checkmark feature ban kr display hogi.</div>
-        </div>
-      `;
-
-      this.bindImagePickerEvents('m_prem_banner');
-
-    } else if (type === 'payment') {
-      title.innerText = isEdit ? "Edit Payment Method" : "Add Payment Method";
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Payment Platform Name *</label>
-          <input type="text" id="m_pay_platform" class="form-input" required 
-            placeholder="e.g. JazzCash, EasyPaisa, Binance Pay (USDT TRC20), Nayapay, Bank Alfalah" 
-            value="${isEdit ? sanitize(item.platform) : ''}" />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Account Number / Wallet Address *</label>
-          <input type="text" id="m_pay_number" class="form-input" required 
-            placeholder="e.g. 03001234567 ya TRC20 Wallet Address" 
-            value="${isEdit ? sanitize(item.accountNumber) : ''}" />
-          <div class="form-hint">Customer can click 'Copy' to copy this number instantly.</div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Account Title / Beneficiary Name (Optional)</label>
-          <input type="text" id="m_pay_title" class="form-input" 
-            placeholder="e.g. Muhammad Raza (Customer ko confirm krny k liye)" 
-            value="${isEdit ? sanitize(item.accountTitle || '') : ''}" />
-        </div>
-
-        <div class="form-group">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="m_pay_show_title" ${!isEdit || item.showTitle ? 'checked' : ''} style="accent-color: var(--admin-accent); width:18px; height:18px;" />
-            <span style="font-size:0.85rem; color:#fff;">
-              <strong>Show Account Title to Buyers</strong> (Uncheck to hide title completely)
-            </span>
-          </label>
-        </div>
-
-        ${this.renderImagePickerControl(
-          'm_pay_qr', 
-          isEdit ? item.qrCode : '', 
-          'Payment QR Code Image (Optional)', 
-          'Upload your JazzCash/EasyPaisa/Binance QR Code screenshot from mobile gallery so customers can scan and pay.',
-          []
-        )}
-
-        <div class="form-group">
-          <label class="form-label">Payment Instructions for Buyers</label>
-          <textarea id="m_pay_instr" class="form-input" rows="2" 
-            placeholder="e.g. Payment send krny k bad screenshot WhatsApp par attach karein. 10 minute k andar VIP password provide kr diya jaye ga.">${isEdit ? sanitize(item.instructions || '') : ''}</textarea>
-        </div>
-      `;
-
-      this.bindImagePickerEvents('m_pay_qr');
-
-    } else if (type === 'socialLink') {
-      title.innerText = isEdit ? "Edit Channel Link" : "Add New Channel Link";
-      body.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Platform Type *</label>
-          <select id="m_social_platform" class="form-input" style="background:#0d1322; border:1px solid var(--admin-border); color:#fff; padding:10px; width:100%; border-radius:6px;">
-            <option value="telegram" ${isEdit && item.platform === 'telegram' ? 'selected' : ''}>Telegram Channel / Group</option>
-            <option value="whatsapp" ${isEdit && item.platform === 'whatsapp' ? 'selected' : ''}>WhatsApp VIP Broadcast / Channel</option>
-            <option value="youtube" ${isEdit && item.platform === 'youtube' ? 'selected' : ''}>YouTube Channel</option>
-            <option value="discord" ${isEdit && item.platform === 'discord' ? 'selected' : ''}>Discord Community</option>
-            <option value="instagram" ${isEdit && item.platform === 'instagram' ? 'selected' : ''}>Instagram Profile</option>
-            <option value="twitter" ${isEdit && item.platform === 'twitter' ? 'selected' : ''}>Twitter / X</option>
-            <option value="tiktok" ${isEdit && item.platform === 'tiktok' ? 'selected' : ''}>TikTok Profile</option>
-            <option value="custom" ${isEdit && item.platform === 'custom' ? 'selected' : ''}>Custom Web Link</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Channel Display Name / Title *</label>
-          <input type="text" id="m_social_title" class="form-input" required placeholder="e.g. Join Official Telegram VIP Channel" value="${isEdit ? sanitize(item.title) : ''}" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Channel Link / URL *</label>
-          <input type="url" id="m_social_url" class="form-input" required placeholder="https://t.me/your_channel" value="${isEdit ? sanitize(item.url) : ''}" />
-        </div>
-        <div class="form-group">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" id="m_social_active" ${!isEdit || item.active !== false ? 'checked' : ''} style="accent-color: var(--admin-accent); width:18px; height:18px;" />
-            <span style="font-size:0.88rem; color:#fff;"><strong>Active (Shown & Required on Gatekeeper)</strong> — Uncheck to hide without deleting ("aik hide kr skoon")</span>
-          </label>
-        </div>
-      `;
-    }
-  }
-
-  saveGenericModal() {
-    const type = this.activeModalType;
-
-    if (type === 'bot') {
-      const title = document.getElementById('m_bot_title')?.value.trim();
-      if (!title) return alert("Bot / Indicator title is required!");
-
-      const featuresRaw = document.getElementById('m_bot_features')?.value || '';
-      const features = featuresRaw
-        .split('\n')
-        .map(s => s.trim().replace(/^[-*•]\s*/, ''))
-        .filter(Boolean);
-
-      store.saveBot({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        title: title,
-        category: document.getElementById('m_bot_cat')?.value || 'scalping',
-        badge: document.getElementById('m_bot_badge')?.value.trim() || '🔥 Top Rated',
-        market: document.getElementById('m_bot_market')?.value.trim() || 'Crypto, Forex & Gold',
-        timeframe: document.getElementById('m_bot_tf')?.value.trim() || 'All Timeframes',
-        winRate: document.getElementById('m_bot_win')?.value.trim() || '80%',
-        isFree: document.getElementById('m_bot_isFree')?.value === 'true',
-        tradingViewLink: document.getElementById('m_bot_link')?.value.trim() || '#',
-        logo: document.getElementById('m_bot_logo')?.value.trim() || 'logo.svg',
-        features: features.length > 0 ? features : ["Non-Repainting Signals", "TradingView Alert Ready"],
-        description: document.getElementById('m_bot_desc')?.value.trim() || 'Professional quantitative TradingView script.'
-      });
-
-    } else if (type === 'book') {
-      const title = document.getElementById('m_book_title')?.value.trim();
-      if (!title) return alert("Book title is required!");
-
-      store.saveBook({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        title: title,
-        author: document.getElementById('m_book_author')?.value.trim() || 'Senior Trader',
-        pages: document.getElementById('m_book_pages')?.value.trim() || '150 Pages',
-        rating: document.getElementById('m_book_rating')?.value.trim() || '4.9 / 5.0',
-        category: document.getElementById('m_book_cat')?.value.trim() || 'Trading',
-        downloadLink: document.getElementById('m_book_link')?.value.trim() || '#',
-        cover: document.getElementById('m_book_cover')?.value.trim() || 'logo.svg',
-        description: document.getElementById('m_book_desc')?.value.trim() || 'Essential trading guide and playbook.',
-        fileType: 'PDF eBook'
-      });
-
-    } else if (type === 'course') {
-      const title = document.getElementById('m_course_title')?.value.trim();
-      if (!title) return alert("Course title is required!");
-
-      store.saveCourse({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        title: title,
-        instructor: document.getElementById('m_course_inst')?.value.trim() || 'Senior Mentor',
-        duration: document.getElementById('m_course_dur')?.value.trim() || '10 Hours',
-        level: document.getElementById('m_course_lvl')?.value || 'All Levels',
-        badge: document.getElementById('m_course_badge')?.value.trim() || '🎓 Masterclass',
-        accessLink: document.getElementById('m_course_link')?.value.trim() || '#',
-        thumbnail: document.getElementById('m_course_thumb')?.value.trim() || 'logo.svg',
-        description: document.getElementById('m_course_desc')?.value.trim() || 'Comprehensive trading educational curriculum.'
-      });
-
-    } else if (type === 'premium') {
-      const title = document.getElementById('m_prem_title')?.value.trim();
-      if (!title) return alert("VIP algorithm title is required!");
-
-      const featuresRaw = document.getElementById('m_prem_features')?.value || '';
-      const features = featuresRaw
-        .split('\n')
-        .map(s => s.trim().replace(/^[-*•]\s*/, ''))
-        .filter(Boolean);
-
-      store.savePremium({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        title: title,
-        tagline: document.getElementById('m_prem_tagline')?.value.trim() || 'Next-Gen Quantitative Suite',
-        priceUSD: parseFloat(document.getElementById('m_prem_usd')?.value) || 49,
-        pricePKR: parseFloat(document.getElementById('m_prem_pkr')?.value) || 13500,
-        winRate: document.getElementById('m_prem_win')?.value.trim() || '88%',
-        scriptLink: document.getElementById('m_prem_link')?.value.trim() || '#',
-        banner: document.getElementById('m_prem_banner')?.value.trim() || 'logo.svg',
-        features: features.length > 0 ? features : [
-          "Private Invite-Only PineScript Access",
-          "Zero Repaint Algorithm with Confluence Filters",
-          "Lifetime Access & VIP WhatsApp Support"
-        ],
-        requiresKey: true
-      });
-
-    } else if (type === 'payment') {
-      const platform = document.getElementById('m_pay_platform')?.value.trim();
-      const num = document.getElementById('m_pay_number')?.value.trim();
-      const title = document.getElementById('m_pay_title')?.value.trim();
-      const showTitle = document.getElementById('m_pay_show_title')?.checked;
-      const qrCode = document.getElementById('m_pay_qr')?.value.trim() || '';
-
-      if (!platform || !num) return alert("Platform Name and Account Number are required!");
-
-      store.savePaymentMethod({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        platform: platform,
-        accountNumber: num,
-        accountTitle: title,
-        showTitle: !!(showTitle && title),
-        qrCode: qrCode,
-        instructions: document.getElementById('m_pay_instr')?.value.trim() || '',
-        active: true
-      });
-
-    } else if (type === 'socialLink') {
-      const platform = document.getElementById('m_social_platform')?.value;
-      const title = document.getElementById('m_social_title')?.value.trim();
-      const url = document.getElementById('m_social_url')?.value.trim();
-      const active = document.getElementById('m_social_active')?.checked;
-
-      if (!title || !url) return alert("Title and Channel URL are required!");
-
-      store.saveSocialLink({
-        id: this.editingItem ? this.editingItem.id : undefined,
-        platform: platform || 'telegram',
-        title: title,
-        url: url,
-        active: active !== false
-      });
+    if (curPass !== settings.adminPassword) {
+      if (alertBox) {
+        alertBox.style.display = 'block';
+        alertBox.style.background = 'rgba(255, 59, 105, 0.15)';
+        alertBox.style.border = '1px solid #ff3b69';
+        alertBox.style.color = '#ff6b8b';
+        alertBox.innerText = 'Current password is incorrect!';
+      }
+      this.showToast("Current password incorrect!", "error");
+      return false;
     }
 
-    this.closeModals();
-    this.showToast("Item saved successfully with all custom settings!", "success");
-    this.renderCurrentSection();
+    if (!newUser) return alert("Admin username cannot be blank!");
+    if (!newPass || newPass.length < 3) return alert("New password must be at least 3 characters long!");
+    if (newPass !== confPass) return alert("Passwords do not match!");
+
+    store.saveSiteSettings({
+      ...settings,
+      adminUsername: newUser,
+      adminPassword: newPass
+    });
+
+    if (alertBox) {
+      alertBox.style.display = 'block';
+      alertBox.style.background = 'rgba(0, 242, 152, 0.15)';
+      alertBox.style.border = '1px solid var(--admin-accent)';
+      alertBox.style.color = 'var(--admin-accent)';
+      alertBox.innerText = `Success: Admin username updated to "${newUser}" and new password saved.`;
+    }
+
+    curPassInput.value = '';
+    newPassInput.value = '';
+    confPassInput.value = '';
+
+    this.showToast("Admin credentials updated successfully!", "success");
+    return true;
   }
 
-  deleteItem(type, id) {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-    if (type === 'bot') store.deleteBot(id);
-    if (type === 'book') store.deleteBook(id);
-    if (type === 'course') store.deleteCourse(id);
-    if (type === 'premium') store.deletePremium(id);
-    this.showToast("Item deleted.", "info");
-    this.renderCurrentSection();
+  // --- UTILITIES ---
+  copyText(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      this.showToast("Copied to clipboard!", "info");
+    });
   }
 
-  deletePaymentMethod(id) {
-    if (!confirm("Delete this payment method?")) return;
-    store.deletePaymentMethod(id);
-    this.showToast("Payment method deleted.", "info");
-    this.renderPaymentsTable();
+  showToast(message, type = "info") {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerText = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 400);
+    }, 3500);
   }
 
-  // --- EVENT BINDING ---
+  // --- BIND ALL EVENTS ---
   bindEvents() {
-    // Login Form Submit
+    // 1. Login Form
     const loginForm = document.getElementById('adminLoginForm');
     if (loginForm) {
       loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const u = document.getElementById('adminLoginUser').value;
-        const p = document.getElementById('adminLoginPass').value;
-        if (!this.login(u, p)) {
-          alert("Invalid username or password! (Default: admin / admin)");
-        }
+        const user = document.getElementById('adminLoginUser')?.value || '';
+        const pass = document.getElementById('adminLoginPass')?.value || '';
+        this.login(user, pass);
       });
     }
 
-    // Logout
+    // 2. Logout Button
     const logoutBtn = document.getElementById('btnAdminLogout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => this.logout());
     }
 
-    // Sidebar Nav
+    // 3. Navigation Sidebar Items
     document.querySelectorAll('.nav-item-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.switchSection(btn.dataset.section));
+    });
+
+    // 4. Mobile Nav Toggle
+    const mobileToggle = document.getElementById('btnAdminMobileNavToggle');
+    const sidebar = document.querySelector('.admin-sidebar');
+    const backdrop = document.getElementById('adminSidebarBackdrop');
+
+    if (mobileToggle && sidebar) {
+      mobileToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('active');
+      });
+    }
+
+    if (backdrop && sidebar) {
+      backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      });
+    }
+
+    // 5. Close generic modal buttons
+    document.querySelectorAll('#adminGenericModal .modal-close-btn').forEach(btn => {
+      btn.addEventListener('click', () => this.closeGenericModal());
+    });
+
+    // 6. Close screenshot modal buttons
+    document.querySelectorAll('#adminScreenshotModal .modal-close-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        this.switchSection(btn.dataset.section);
+        const modal = document.getElementById('adminScreenshotModal');
+        if (modal) modal.classList.remove('active');
       });
     });
 
-    // Create Site Access Password Form
-    const newPwdForm = document.getElementById('formNewSitePassword');
-    if (newPwdForm) {
-      newPwdForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const pwd = document.getElementById('newSitePasswordVal').value;
-        const limit = document.getElementById('newSitePasswordLimit').value;
-        const note = document.getElementById('newSitePasswordNote').value;
-        this.createNewSitePassword(pwd, limit, note);
-        newPwdForm.reset();
+    // 7. Lock 1: Master Toggle
+    const toggleSiteLock = document.getElementById('toggleSiteEntryLockMaster');
+    if (toggleSiteLock) {
+      toggleSiteLock.addEventListener('change', (e) => {
+        const current = store.getGatekeeperConfig();
+        const enabled = e.target.checked;
+        store.saveGatekeeperConfig({
+          ...current,
+          enabled: enabled,
+          mode: enabled ? 'strict' : 'disabled'
+        });
+        const label = document.getElementById('labelSiteEntryLockState');
+        if (label) {
+          label.innerText = enabled ? "Enabled (Active)" : "Disabled (Open Access)";
+          label.style.color = enabled ? "var(--admin-accent)" : "var(--admin-red)";
+        }
+        this.showToast(`Lock 1 (Site Entry Lock) is now ${enabled ? 'Enabled' : 'Disabled'}!`, "info");
       });
     }
 
-    // Generate Random Password Helper
-    const genPwdBtn = document.getElementById('btnGenRandomPassword');
-    if (genPwdBtn) {
-      genPwdBtn.addEventListener('click', () => {
+    // 8. Lock 1: Settings Form
+    const siteLockSettingsForm = document.getElementById('formSiteEntryLockSettings');
+    if (siteLockSettingsForm) {
+      siteLockSettingsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const current = store.getGatekeeperConfig();
+        const socReq = document.getElementById('gkConfigSocialReq')?.checked;
+        const pwdReq = document.getElementById('gkConfigPasswordReq')?.checked;
+        const stealth = parseInt(document.getElementById('gkConfigStealthSec')?.value, 10) || 8;
+
+        store.saveGatekeeperConfig({
+          ...current,
+          socialVerificationRequired: socReq,
+          passwordUnlockRequired: pwdReq,
+          minEngagementSeconds: stealth
+        });
+        this.showToast("Lock 1 settings saved!", "success");
+      });
+    }
+
+    // 9. Lock 1: Create Password Form
+    const formNewSitePass = document.getElementById('formNewSitePassword');
+    const btnGenPass = document.getElementById('btnGenRandomPassword');
+    if (btnGenPass) {
+      btnGenPass.addEventListener('click', () => {
         const input = document.getElementById('newSitePasswordVal');
-        if (input) {
-          input.value = 'STORE-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.floor(10 + Math.random() * 90);
-        }
+        if (input) input.value = 'ENTRY-' + Math.random().toString(36).substring(2, 7).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
       });
     }
-
-    // Generate Random VIP Key Helper
-    const genPremKeyBtn = document.getElementById('btnGenRandomPremKey');
-    if (genPremKeyBtn) {
-      genPremKeyBtn.addEventListener('click', () => {
-        const input = document.getElementById('newPremKeyVal');
-        if (input) {
-          input.value = 'VIP-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
-        }
-      });
-    }
-
-    // Create Premium Key Form (Full Page Access)
-    const newPremKeyForm = document.getElementById('formNewPremiumKey');
-    if (newPremKeyForm) {
-      newPremKeyForm.addEventListener('submit', (e) => {
+    if (formNewSitePass) {
+      formNewSitePass.addEventListener('submit', (e) => {
         e.preventDefault();
-        const key = document.getElementById('newPremKeyVal').value.trim();
-        const customer = document.getElementById('newPremKeyCustomer').value.trim();
-        const note = document.getElementById('newPremKeyNote')?.value.trim() || '';
+        const passVal = document.getElementById('newSitePasswordVal')?.value.trim();
+        const limitVal = document.getElementById('newSitePasswordLimit')?.value;
+        const noteVal = document.getElementById('newSitePasswordNote')?.value.trim();
 
-        if (!key) return alert("Key is required!");
-        store.savePremiumPassword({
-          key: key,
-          assignedTo: customer,
-          note: note,
+        if (!passVal) return alert("Password cannot be empty!");
+
+        store.saveSitePassword({
+          password: passVal,
+          maxDevices: parseInt(limitVal, 10) || 1,
+          note: noteVal || 'Site Access Key',
+          usedDevices: [],
           status: 'active'
         });
 
-        this.showToast("VIP Premium Password created (Full Page Access)!", "success");
-        newPremKeyForm.reset();
+        formNewSitePass.reset();
+        this.showToast("Site access key created!", "success");
+        this.renderSitePasswordsTable();
+      });
+    }
+
+    // 10. Lock 2: Master Toggle
+    const togglePremLock = document.getElementById('togglePremiumLockMaster');
+    if (togglePremLock) {
+      togglePremLock.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        store.savePremiumLockConfig({
+          title: "Premium Page Lock",
+          enabled: enabled
+        });
+        const label = document.getElementById('labelPremiumLockState');
+        if (label) {
+          label.innerText = enabled ? "Enabled (VIP Key Required)" : "Disabled (Open VIP Page)";
+          label.style.color = enabled ? "var(--admin-gold)" : "var(--admin-accent)";
+        }
+        this.showToast(`Lock 2 (Premium Page Lock) is now ${enabled ? 'Enabled' : 'Disabled'}!`, "info");
+      });
+    }
+
+    // 11. Lock 2: Issue VIP Key Form
+    const formNewPremKey = document.getElementById('formNewPremiumKey');
+    const btnGenPremKey = document.getElementById('btnGenRandomPremKey');
+    if (btnGenPremKey) {
+      btnGenPremKey.addEventListener('click', () => {
+        const input = document.getElementById('newPremKeyVal');
+        if (input) input.value = 'VIP-KEY-' + Math.random().toString(36).substring(2, 7).toUpperCase() + '-' + Math.floor(100 + Math.random() * 900);
+      });
+    }
+    if (formNewPremKey) {
+      formNewPremKey.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const keyVal = document.getElementById('newPremKeyVal')?.value.trim();
+        const custVal = document.getElementById('newPremKeyCustomer')?.value.trim();
+        const noteVal = document.getElementById('newPremKeyNote')?.value.trim();
+
+        if (!keyVal) return alert("VIP key cannot be empty!");
+
+        store.savePremiumPassword({
+          key: keyVal,
+          assignedTo: custVal,
+          note: noteVal,
+          status: 'active'
+        });
+
+        formNewPremKey.reset();
+        this.showToast("VIP license key issued successfully!", "success");
         this.renderPremiumKeysTable();
       });
     }
 
-    // Mobile Sidebar Drawer Toggle
-    const mobileToggle = document.getElementById('btnAdminMobileNavToggle');
-    const adminSidebar = document.querySelector('.admin-sidebar');
-    const adminBackdrop = document.getElementById('adminSidebarBackdrop');
-
-    if (mobileToggle && adminSidebar && adminBackdrop) {
-      mobileToggle.addEventListener('click', () => {
-        adminSidebar.classList.toggle('mobile-open');
-        adminBackdrop.classList.toggle('active');
-      });
-
-      adminBackdrop.addEventListener('click', () => {
-        adminSidebar.classList.remove('mobile-open');
-        adminBackdrop.classList.remove('active');
-      });
-
-      // Close mobile drawer on nav item click
-      document.querySelectorAll('.nav-item-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          adminSidebar.classList.remove('mobile-open');
-          adminBackdrop.classList.remove('active');
-        });
-      });
-    }
-
-    // Gatekeeper Settings Form Submit
-    const gkForm = document.getElementById('gatekeeperSettingsForm');
-    if (gkForm) {
-      gkForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const enabled = document.getElementById('gkConfigEnabled')?.checked;
-        const socialReq = document.getElementById('gkConfigSocialReq')?.checked;
-        const passReq = document.getElementById('gkConfigPasswordReq')?.checked;
-        const stealthSec = parseInt(document.getElementById('gkConfigStealthSec')?.value, 10) || 8;
-
-        store.saveGatekeeperConfig({
-          enabled: enabled !== false,
-          socialVerificationRequired: socialReq !== false,
-          passwordUnlockRequired: passReq !== false,
-          minEngagementSeconds: stealthSec
-        });
-
-        this.showToast("Gatekeeper rules saved successfully!", "success");
-        this.renderSocialLinksSection();
-      });
-    }
-
-    // Branding Settings Form Submit
-    const settingsForm = document.getElementById('siteSettingsForm');
-    if (settingsForm) {
-      settingsForm.addEventListener('submit', (e) => {
+    // 12. Settings Form Submit
+    const siteSettingsForm = document.getElementById('siteSettingsForm');
+    if (siteSettingsForm) {
+      siteSettingsForm.addEventListener('submit', (e) => {
         e.preventDefault();
         this.saveSettingsFromForm();
       });
     }
 
-    // Admin Credentials Form Submit (Anti-Hack)
-    const credForm = document.getElementById('adminCredentialsForm');
-    if (credForm) {
-      credForm.addEventListener('submit', (e) => {
+    // 13. Admin Credentials Form Submit
+    const adminCredsForm = document.getElementById('adminCredentialsForm');
+    if (adminCredsForm) {
+      adminCredsForm.addEventListener('submit', (e) => {
         e.preventDefault();
         this.saveAdminCredentials();
       });
     }
-
-    // Add Button Listeners (sidebar buttons call these)
-    const addBotBtn = document.getElementById('btnAddBot');
-    const addBookBtn = document.getElementById('btnAddBook');
-    const addCourseBtn = document.getElementById('btnAddCourse');
-    const addPremBtn = document.getElementById('btnAddPremium');
-    const addPayBtn = document.getElementById('btnAddPayment');
-    const addSocialBtn = document.getElementById('btnAddSocialLink');
-    const viewAllOrdersBtn = document.getElementById('btnViewAllOrders');
-    const saveModalBtn = document.getElementById('btnSaveModal');
-
-    if (addBotBtn) addBotBtn.addEventListener('click', () => this.openAddModal('bot'));
-    if (addBookBtn) addBookBtn.addEventListener('click', () => this.openAddModal('book'));
-    if (addCourseBtn) addCourseBtn.addEventListener('click', () => this.openAddModal('course'));
-    if (addPremBtn) addPremBtn.addEventListener('click', () => this.openAddModal('premium'));
-    if (addPayBtn) addPayBtn.addEventListener('click', () => this.openAddModal('payment'));
-    if (addSocialBtn) addSocialBtn.addEventListener('click', () => this.openAddModal('socialLink'));
-    if (viewAllOrdersBtn) viewAllOrdersBtn.addEventListener('click', () => this.switchSection('orders'));
-    if (saveModalBtn) saveModalBtn.addEventListener('click', () => this.saveGenericModal());
-
-    // Modal Close
-    document.querySelectorAll('.modal-close-btn').forEach(b => {
-      b.addEventListener('click', () => this.closeModals());
-    });
-  }
-
-  closeModals() {
-    document.querySelectorAll('.admin-modal-overlay, .screenshot-preview-modal').forEach(m => {
-      m.classList.remove('active');
-    });
-  }
-
-  copyText(text) {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      this.showToast("Copied: " + text, "info");
-    }
-  }
-
-  showToast(message, type = 'info') {
-    let container = document.querySelector('.toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'toast-container';
-      document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${type === 'success' ? '✓' : 'ℹ️'}</span><span>${sanitize(message)}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      setTimeout(() => toast.remove(), 300);
-    }, 3500);
   }
 }
 
-// Global bootstrap
-document.addEventListener('DOMContentLoaded', () => {
-  window.adminPanel = new AdminPanel();
-});
+// Global instance
+window.adminPanel = new AdminPanel();

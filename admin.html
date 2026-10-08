@@ -49,13 +49,20 @@
     <aside class="admin-sidebar">
       <div class="sidebar-brand">
         <img src="logo.svg" alt="TradingStore" style="height: 38px;" />
+        <span style="font-family: var(--font-head); font-weight: 800; font-size: 1.15rem; color: #fff;">TradingStore</span>
       </div>
 
       <nav class="sidebar-nav">
+        <!-- Overview -->
         <button type="button" class="nav-item-btn active" data-section="dashboard">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span>Overview</span>
         </button>
+
+        <!-- FREE CONTENT SECTION -->
+        <div style="padding: 10px 14px 4px; font-size: 0.72rem; font-weight: 800; color: var(--admin-accent); text-transform: uppercase; letter-spacing: 0.8px;">
+          Free Catalog
+        </div>
 
         <button type="button" class="nav-item-btn" data-section="bots">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
@@ -72,25 +79,45 @@
           <span>Courses</span>
         </button>
 
-        <button type="button" class="nav-item-btn" data-section="premium">
+        <!-- VIP PREMIUM SECTION -->
+        <div style="padding: 14px 14px 4px; font-size: 0.72rem; font-weight: 800; color: var(--admin-gold); text-transform: uppercase; letter-spacing: 0.8px;">
+          VIP Premium Hub
+        </div>
+
+        <button type="button" class="nav-item-btn" data-section="premBots">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          <span>VIP Scripts</span>
+          <span>Premium Bots</span>
         </button>
 
-        <button type="button" class="nav-item-btn" data-section="socialLinks">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-          <span>Gatekeeper & Channels</span>
+        <button type="button" class="nav-item-btn" data-section="premBooks">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Premium Books</span>
         </button>
 
-        <button type="button" class="nav-item-btn" data-section="passwords">
+        <button type="button" class="nav-item-btn" data-section="premCourses">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
+          <span>Premium Courses</span>
+        </button>
+
+        <!-- SECURITY & LOCKS SECTION -->
+        <div style="padding: 14px 14px 4px; font-size: 0.72rem; font-weight: 800; color: var(--admin-cyan); text-transform: uppercase; letter-spacing: 0.8px;">
+          Security & Locks
+        </div>
+
+        <button type="button" class="nav-item-btn" data-section="siteEntryLock">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          <span>Site Passwords</span>
+          <span>Site Entry Lock</span>
         </button>
 
-        <button type="button" class="nav-item-btn" data-section="premiumKeys">
+        <button type="button" class="nav-item-btn" data-section="premiumPageLock">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-2-2l2 2m0 0l-7.5 7.5a4.5 4.5 0 1 0 3 3L22 7l-2-2-2 2z"></path></svg>
-          <span>VIP Premium Keys</span>
+          <span>Premium Page Lock</span>
         </button>
+
+        <!-- COMMERCE & INBOX -->
+        <div style="padding: 14px 14px 4px; font-size: 0.72rem; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.8px;">
+          Payments & Orders
+        </div>
 
         <button type="button" class="nav-item-btn" data-section="payments">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
@@ -103,6 +130,7 @@
           <span class="nav-badge" id="navOrdersBadge">0</span>
         </button>
 
+        <!-- SETTINGS -->
         <button type="button" class="nav-item-btn" data-section="settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Settings & Security</span>
@@ -148,7 +176,7 @@
             <div class="stat-card">
               <div class="stat-icon green">🤖</div>
               <div class="stat-info">
-                <h4>Trading Bots</h4>
+                <h4>Free Bots</h4>
                 <div class="stat-number" id="statBotsCount">0</div>
               </div>
             </div>
@@ -156,7 +184,7 @@
             <div class="stat-card">
               <div class="stat-icon cyan">📚</div>
               <div class="stat-info">
-                <h4>Trading Books</h4>
+                <h4>Free Books</h4>
                 <div class="stat-number" id="statBooksCount">0</div>
               </div>
             </div>
@@ -164,16 +192,32 @@
             <div class="stat-card">
               <div class="stat-icon gold">🎓</div>
               <div class="stat-info">
-                <h4>Courses</h4>
+                <h4>Free Courses</h4>
                 <div class="stat-number" id="statCoursesCount">0</div>
               </div>
             </div>
 
             <div class="stat-card">
-              <div class="stat-icon gold">★</div>
+              <div class="stat-icon gold">👑</div>
               <div class="stat-info">
-                <h4>VIP Scripts</h4>
-                <div class="stat-number" id="statPremiumCount">0</div>
+                <h4>Premium Bots</h4>
+                <div class="stat-number" id="statPremBotsCount">0</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon cyan">👑</div>
+              <div class="stat-info">
+                <h4>Premium Books</h4>
+                <div class="stat-number" id="statPremBooksCount">0</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon green">👑</div>
+              <div class="stat-info">
+                <h4>Premium Courses</h4>
+                <div class="stat-number" id="statPremCoursesCount">0</div>
               </div>
             </div>
 
@@ -188,8 +232,16 @@
             <div class="stat-card">
               <div class="stat-icon green">🔐</div>
               <div class="stat-info">
-                <h4>Active Site Keys</h4>
+                <h4>Site Keys (Lock 1)</h4>
                 <div class="stat-number" id="statPasswordsCount">0</div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon gold">🔑</div>
+              <div class="stat-info">
+                <h4>VIP Keys (Lock 2)</h4>
+                <div class="stat-number" id="statPremKeysCount">0</div>
               </div>
             </div>
           </div>
@@ -197,7 +249,7 @@
           <!-- Recent Orders Panel -->
           <div class="panel-card">
             <div class="panel-header">
-              <h3>Recent Incoming Orders & Payment Proofs</h3>
+              <h3>Recent Incoming Buy Key Orders & Receipts</h3>
               <button type="button" class="btn-sm-view" onclick="window.adminPanel.switchSection('orders')">
                 View All Orders
               </button>
@@ -207,8 +259,8 @@
                 <thead>
                   <tr>
                     <th>Order ID</th>
-                    <th>Customer Contact</th>
-                    <th>Product</th>
+                    <th>Buyer Gmail</th>
+                    <th>Contact (WA / TG)</th>
                     <th>Payment Method</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -223,12 +275,17 @@
         </section>
 
         <!-- ==================================================================
-             SECTION 2: BOTS MANAGEMENT
+             SECTION 2: FREE BOTS MANAGEMENT
              ================================================================== -->
         <section id="section-bots" class="admin-section">
           <div class="panel-card">
             <div class="panel-header">
-              <h3>TradingView Bots & Algorithmic Scripts</h3>
+              <div>
+                <h3>Free Trading Bots & Scripts</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Item Name, Image/Logo, and MediaFire / Google Drive direct link.
+                </p>
+              </div>
               <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('bot')">
                 + Add New Bot
               </button>
@@ -239,10 +296,8 @@
                   <tr>
                     <th>Logo</th>
                     <th>Title</th>
-                    <th>Market</th>
                     <th>Category</th>
-                    <th>Type</th>
-                    <th>TradingView Link</th>
+                    <th>Download Link (MediaFire / Drive)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -253,12 +308,17 @@
         </section>
 
         <!-- ==================================================================
-             SECTION 3: BOOKS MANAGEMENT
+             SECTION 3: FREE BOOKS MANAGEMENT
              ================================================================== -->
         <section id="section-books" class="admin-section">
           <div class="panel-card">
             <div class="panel-header">
-              <h3>Trading Books & PDF Library</h3>
+              <div>
+                <h3>Free Trading Books & PDF Library</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Book Name, Cover Image, and MediaFire / Google Drive PDF link.
+                </p>
+              </div>
               <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('book')">
                 + Add New Book
               </button>
@@ -269,10 +329,8 @@
                   <tr>
                     <th>Cover</th>
                     <th>Title</th>
-                    <th>Author</th>
-                    <th>Pages</th>
                     <th>Category</th>
-                    <th>Download Link</th>
+                    <th>Download Link (MediaFire / Drive)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -283,12 +341,17 @@
         </section>
 
         <!-- ==================================================================
-             SECTION 4: COURSES MANAGEMENT
+             SECTION 4: FREE COURSES MANAGEMENT
              ================================================================== -->
         <section id="section-courses" class="admin-section">
           <div class="panel-card">
             <div class="panel-header">
-              <h3>Trading Courses & Video Mentorships</h3>
+              <div>
+                <h3>Free Trading Video Courses & Mentorships</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Course Name, Thumbnail Image, and MediaFire / Google Drive link.
+                </p>
+              </div>
               <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('course')">
                 + Add New Course
               </button>
@@ -299,10 +362,8 @@
                   <tr>
                     <th>Thumbnail</th>
                     <th>Title</th>
-                    <th>Mentor</th>
-                    <th>Duration</th>
-                    <th>Level</th>
-                    <th>Course Link</th>
+                    <th>Category</th>
+                    <th>Download Link (MediaFire / Drive)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -313,276 +374,164 @@
         </section>
 
         <!-- ==================================================================
-             SECTION 5: PREMIUM VIP SCRIPTS
+             SECTION 5: PREMIUM BOTS MANAGEMENT
              ================================================================== -->
-        <section id="section-premium" class="admin-section">
-          <div class="panel-card">
-            <div class="panel-header">
-              <h3>VIP Premium TradingView Scripts (For Sale)</h3>
-              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('premium')">
-                + Add New VIP Script
-              </button>
-            </div>
-            <div class="table-responsive">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>Banner</th>
-                    <th>Title</th>
-                    <th>Price</th>
-                    <th>Win Rate</th>
-                    <th>Script Link Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="premiumTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================================
-             SECTION 6: SITE ACCESS PASSWORDS (WITH STRICT DEVICE LIMITS)
-             ================================================================== -->
-        <section id="section-passwords" class="admin-section">
-          <!-- Create Password Form Box -->
-          <div class="panel-card" style="padding: 24px; margin-bottom: 24px;">
-            <h3 style="font-family: var(--font-head); margin-bottom: 8px;">Create New Site Access Password</h3>
-            <p style="color: var(--text-dim); font-size: 0.88rem; margin-bottom: 16px;">
-              Configure a password with a strict hardware device limit. Only the specified number of devices can activate this password.
-            </p>
-            <form id="formNewSitePassword" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 12px; align-items: flex-end;">
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Access Password *</label>
-                <div style="display: flex; gap: 6px;">
-                  <input type="text" id="newSitePasswordVal" class="form-input" placeholder="e.g. TRADEX-VIP-2026" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-                  <button type="button" id="btnGenRandomPassword" class="btn-sm-view" title="Generate random key">⚡</button>
-                </div>
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Max Allowed Devices *</label>
-                <input type="number" id="newSitePasswordLimit" class="form-input" min="1" max="50" value="1" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Note / Customer Name</label>
-                <input type="text" id="newSitePasswordNote" class="form-input" placeholder="e.g. Ali Khan - 1 Device" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-              </div>
-
-              <button type="submit" class="btn-sm-edit" style="height: 42px; padding: 0 20px;">
-                + Create Password
-              </button>
-            </form>
-          </div>
-
-          <!-- Existing Passwords Table -->
-          <div class="panel-card">
-            <div class="panel-header">
-              <h3>Active Site Access Passwords & Device Tracker</h3>
-            </div>
-            <div class="table-responsive">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>Password</th>
-                    <th>Note</th>
-                    <th>Device Limit</th>
-                    <th>Registered Devices</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="passwordsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================================
-             SECTION 7: PREMIUM VIP PAGE PASSWORDS (UNIFIED)
-             ================================================================== -->
-        <section id="section-premiumKeys" class="admin-section">
-          <!-- Create Premium Key Box -->
-          <div class="panel-card" style="padding: 24px; margin-bottom: 24px;">
-            <h3 style="font-family: var(--font-head); margin-bottom: 8px;">Issue VIP Premium Password (Full Page Access)</h3>
-            <p style="color: var(--text-dim); font-size: 0.88rem; margin-bottom: 16px;">
-              Create VIP unlock passwords for paid customers. Entering this password unlocks the <strong>ENTIRE VIP Premium Page</strong> on the customer's device, giving them access to all private indicators and PineScript systems.
-            </p>
-            <form id="formNewPremiumKey" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 12px; align-items: flex-end;">
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">VIP Password / Key *</label>
-                <div style="display: flex; gap: 6px;">
-                  <input type="text" id="newPremKeyVal" class="form-input" placeholder="e.g. VIP-APEX-8899" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-                  <button type="button" id="btnGenRandomPremKey" class="btn-sm-view" title="Generate random VIP key">⚡</button>
-                </div>
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Customer WhatsApp / Phone</label>
-                <input type="text" id="newPremKeyCustomer" class="form-input" placeholder="03001234567" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-              </div>
-
-              <div>
-                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Note / Customer Name</label>
-                <input type="text" id="newPremKeyNote" class="form-input" placeholder="e.g. Usman VIP Pass" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-              </div>
-
-              <button type="submit" class="btn-sm-edit" style="height: 42px; padding: 0 20px;">
-                + Issue VIP Key
-              </button>
-            </form>
-          </div>
-
-          <!-- Existing Keys Table -->
-          <div class="panel-card">
-            <div class="panel-header">
-              <h3>Active VIP Premium Passwords (Full Page Access)</h3>
-            </div>
-            <div class="table-responsive">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>VIP Password</th>
-                    <th>Customer Contact</th>
-                    <th>Note</th>
-                    <th>Times Unlocked</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="premiumKeysTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- ==================================================================
-             SECTION 8: PAYMENT ACCOUNTS (JAZZCASH, CRYPTO, BANK)
-             ================================================================== -->
-        <section id="section-payments" class="admin-section">
+        <section id="section-premBots" class="admin-section">
           <div class="panel-card">
             <div class="panel-header">
               <div>
-                <h3>Payment Methods & Gateway Settings</h3>
+                <h3 style="color: var(--admin-gold);">👑 VIP Premium Bots & Scripts</h3>
                 <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
-                  Configure JazzCash, EasyPaisa, Binance, or Bank Transfer. Account title is optional and will only show if configured.
+                  Private bots displayed inside the locked Premium page after unlocking.
                 </p>
               </div>
-              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('payment')">
-                + Add Payment Method
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('premBot')">
+                + Add Premium Bot
               </button>
             </div>
             <div class="table-responsive">
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Platform</th>
-                    <th>Account Number / Address</th>
-                    <th>Account Title / Username (Optional)</th>
-                    <th>Status</th>
+                    <th>Logo</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Download Link (MediaFire / Drive)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
-                <tbody id="paymentsTableBody"></tbody>
+                <tbody id="premBotsTableBody"></tbody>
               </table>
             </div>
           </div>
         </section>
 
         <!-- ==================================================================
-             SECTION 9: ORDERS & PAYMENT SCREENSHOTS INBOX
+             SECTION 6: PREMIUM BOOKS MANAGEMENT
              ================================================================== -->
-        <section id="section-orders" class="admin-section">
+        <section id="section-premBooks" class="admin-section">
           <div class="panel-card">
             <div class="panel-header">
-              <h3>Customer Orders & Payment Screenshot Verification</h3>
-              <span style="font-size:0.85rem; color:var(--text-dim);">
-                Inspect proof screenshot, then 1-click Approve to generate VIP Password & message buyer on WhatsApp.
-              </span>
+              <div>
+                <h3 style="color: var(--admin-gold);">👑 VIP Premium Books & PDF Guides</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Private PDF books displayed inside the locked Premium page.
+                </p>
+              </div>
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('premBook')">
+                + Add Premium Book
+              </button>
             </div>
             <div class="table-responsive">
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>Buyer Contact</th>
-                    <th>Product</th>
-                    <th>Platform</th>
-                    <th>Screenshot</th>
-                    <th>Status</th>
-                    <th>Issued Password</th>
+                    <th>Cover</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Download Link (MediaFire / Drive)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
-                <tbody id="ordersTableBody"></tbody>
+                <tbody id="premBooksTableBody"></tbody>
               </table>
             </div>
           </div>
         </section>
 
         <!-- ==================================================================
-             SECTION: GATEKEEPER VERIFICATION & CHANNEL LINKS
-             Dynamic: 1, 2, 3 or more channels (Telegram, WhatsApp, YouTube, etc.)
-             Show/Hide, Add/Remove, Reorder & Stealth 8-Second Security
+             SECTION 7: PREMIUM COURSES MANAGEMENT
              ================================================================== -->
-        <section id="section-socialLinks" class="admin-section">
-          <!-- Top Card / Actions -->
-          <div class="panel-card" style="margin-bottom: 24px;">
-            <div class="panel-header" style="flex-wrap: wrap; gap: 14px;">
+        <section id="section-premCourses" class="admin-section">
+          <div class="panel-card">
+            <div class="panel-header">
               <div>
-                <h3 style="font-family: var(--font-head); font-size: 1.25rem;">Gatekeeper Verification & Channel Links</h3>
-                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:3px;">
-                  Configure community channels required to enter the website. Visitors must open all active channels and spend at least 8 seconds (stealth verification).
+                <h3 style="color: var(--admin-gold);">👑 VIP Premium Video Courses</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Private masterclasses displayed inside the locked Premium page.
                 </p>
               </div>
-              <button type="button" class="btn-sm-edit" id="btnAddSocialLink" onclick="window.adminPanel.openAddModal('socialLink')" style="padding: 10px 18px; font-weight: 700;">
-                + Add Channel Link
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('premCourse')">
+                + Add Premium Course
               </button>
             </div>
-
-            <!-- Global Gatekeeper Settings Bar -->
-            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--admin-border); border-radius: 8px; padding: 18px; margin-top: 14px;">
-              <form id="gatekeeperSettingsForm" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
-                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px;">
-                  <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; color: #fff;">
-                    <input type="checkbox" id="gkConfigEnabled" style="accent-color: var(--admin-accent); width: 18px; height: 18px;" />
-                    <span><strong>Enable Gatekeeper Lock</strong> (Entry modal)</span>
-                  </label>
-
-                  <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; color: #fff;">
-                    <input type="checkbox" id="gkConfigSocialReq" style="accent-color: var(--admin-accent); width: 18px; height: 18px;" />
-                    <span>Require Social Verification</span>
-                  </label>
-
-                  <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; color: #fff;">
-                    <input type="checkbox" id="gkConfigPasswordReq" style="accent-color: var(--admin-accent); width: 18px; height: 18px;" />
-                    <span>Allow VIP Password Entry</span>
-                  </label>
-
-                  <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-dim);">
-                    <label for="gkConfigStealthSec">Stealth Timer:</label>
-                    <input type="number" id="gkConfigStealthSec" min="1" max="60" value="8" style="width: 60px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid var(--admin-border); color: #fff; text-align: center;" />
-                    <span>sec</span>
-                  </div>
-                </div>
-
-                <button type="submit" class="btn-sm-edit" style="background: rgba(0, 242, 152, 0.15); border-color: var(--admin-accent); color: var(--admin-accent);">
-                  Save Gatekeeper Rules
-                </button>
-              </form>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Thumbnail</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Download Link (MediaFire / Drive)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="premCoursesTableBody"></tbody>
+              </table>
             </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 8: LOCK 1 - SITE ENTRY LOCK & PASSWORDS & CHANNELS
+             ================================================================== -->
+        <section id="section-siteEntryLock" class="admin-section">
+          <!-- Master Lock Toggle Card -->
+          <div class="panel-card" style="margin-bottom: 24px; padding: 22px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <h3 style="font-family: var(--font-head); font-size: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                  <span>🔐 Lock 1: Site Entry Lock (Gatekeeper)</span>
+                </h3>
+                <p style="color: var(--text-dim); font-size: 0.88rem; margin-top: 4px;">
+                  Site open hone par pehla gate. Visitors ko Access Key enter krni hogi ya social channels join krny hon gy (8s timer).
+                </p>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--admin-border);">
+                  <input type="checkbox" id="toggleSiteEntryLockMaster" style="accent-color: var(--admin-accent); width: 20px; height: 20px;" />
+                  <span style="font-weight: 700; color: #fff;" id="labelSiteEntryLockState">Enabled</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Lock 1 Settings Form -->
+            <form id="formSiteEntryLockSettings" style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--admin-border);">
+              <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; color: #fff;">
+                <input type="checkbox" id="gkConfigSocialReq" style="accent-color: var(--admin-accent); width: 18px; height: 18px;" />
+                <span>Require Channel Joining Verification</span>
+              </label>
+
+              <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer; color: #fff;">
+                <input type="checkbox" id="gkConfigPasswordReq" style="accent-color: var(--admin-accent); width: 18px; height: 18px;" />
+                <span>Allow Access Key Option</span>
+              </label>
+
+              <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--text-dim);">
+                <label for="gkConfigStealthSec">Verification Timer:</label>
+                <input type="number" id="gkConfigStealthSec" min="1" max="60" value="8" style="width: 60px; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.4); border: 1px solid var(--admin-border); color: #fff; text-align: center;" />
+                <span>sec</span>
+              </div>
+
+              <button type="submit" class="btn-sm-edit" style="margin-left: auto;">
+                Save Lock 1 Settings
+              </button>
+            </form>
           </div>
 
           <!-- Channel Links List Table -->
           <div class="panel-card" style="margin-bottom: 24px;">
-            <div class="panel-header">
+            <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
               <div>
-                <h4 style="font-family: var(--font-head); font-size: 1.1rem;">Active & Configured Channels</h4>
-                <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 2px;">
-                  Use the <strong>Visibility Toggle</strong> to show or hide channels ("aik hide kr skoon", "dono aik sath", or "3 bi lga skoon").
+                <h4 style="font-family: var(--font-head); font-size: 1.15rem;">Community Channels (Telegram, FB, YT, WhatsApp)</h4>
+                <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 2px;">
+                  User click kry ga aur 8 second k bad "✓ Verified" likha show hoga. Show/Hide kr skte hain.
                 </p>
               </div>
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('socialLink')">
+                + Add Channel Link
+              </button>
             </div>
 
             <div class="table-responsive">
@@ -601,78 +550,236 @@
             </div>
           </div>
 
-          <!-- Live Gatekeeper Preview Card -->
+          <!-- Site Entry Passwords Table -->
           <div class="panel-card">
             <div class="panel-header">
               <div>
-                <h4 style="font-family: var(--font-head); font-size: 1.1rem;">Live Gatekeeper Preview</h4>
-                <p style="color: var(--text-dim); font-size: 0.82rem; margin-top: 2px;">
-                  Visual preview of how your Gatekeeper modal currently appears to website visitors:
+                <h4 style="font-family: var(--font-head); font-size: 1.15rem;">Site Entry Passwords (Device-Locked)</h4>
+                <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 2px;">
+                  Keys that allow users to unlock the first gate directly.
                 </p>
               </div>
             </div>
-            <div id="adminGatekeeperLivePreview" style="background: #080d1a; border: 1px solid var(--admin-border); border-radius: 12px; padding: 24px; max-width: 520px; margin: 10px auto;">
-              <!-- Dynamic live preview rendered by admin.js -->
+
+            <!-- Create Password Form Box -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--admin-border); border-radius: 8px; padding: 18px; margin: 16px 0;">
+              <form id="formNewSitePassword" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 12px; align-items: flex-end;">
+                <div>
+                  <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Access Key / Password *</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" id="newSitePasswordVal" class="form-input" placeholder="e.g. TRADING-ENTRY-2026" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                    <button type="button" id="btnGenRandomPassword" class="btn-sm-view" title="Generate random key">⚡</button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Max Allowed Devices *</label>
+                  <input type="number" id="newSitePasswordLimit" class="form-input" min="1" max="50" value="1" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                </div>
+
+                <div>
+                  <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Note / Name</label>
+                  <input type="text" id="newSitePasswordNote" class="form-input" placeholder="e.g. Community Key" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                </div>
+
+                <button type="submit" class="btn-sm-edit" style="height: 42px; padding: 0 20px;">
+                  + Create Key
+                </button>
+              </form>
+            </div>
+
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Note</th>
+                    <th>Device Limit</th>
+                    <th>Registered Devices</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="passwordsTableBody"></tbody>
+              </table>
             </div>
           </div>
         </section>
 
         <!-- ==================================================================
-             SECTION 11: SITE SETTINGS & ADMIN SECURITY CREDENTIALS
-             Change username, password, branding with anti-hack protections
+             SECTION 9: LOCK 2 - PREMIUM PAGE LOCK & VIP KEYS
+             ================================================================== -->
+        <section id="section-premiumPageLock" class="admin-section">
+          <!-- Master Premium Lock Toggle Card -->
+          <div class="panel-card" style="margin-bottom: 24px; padding: 22px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <h3 style="font-family: var(--font-head); font-size: 1.25rem; display: flex; align-items: center; gap: 10px; color: var(--admin-gold);">
+                  <span>👑 Lock 2: Premium Page Lock</span>
+                </h3>
+                <p style="color: var(--text-dim); font-size: 0.88rem; margin-top: 4px;">
+                  VIP Premium page ko lock kr k rkhne k liye. Jab visitor key enter kry ga ya Buy Key k zariye payment verify hogi tab unlock hoga.
+                </p>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 30px; border: 1px solid var(--admin-border);">
+                  <input type="checkbox" id="togglePremiumLockMaster" style="accent-color: var(--admin-gold); width: 20px; height: 20px;" />
+                  <span style="font-weight: 700; color: #fff;" id="labelPremiumLockState">Enabled</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Issue New Premium Key Box -->
+          <div class="panel-card" style="padding: 24px; margin-bottom: 24px;">
+            <h3 style="font-family: var(--font-head); margin-bottom: 8px;">Issue New VIP Premium Key (Unlocks Premium Hub)</h3>
+            <p style="color: var(--text-dim); font-size: 0.88rem; margin-bottom: 16px;">
+              Yeh key enter krny se customer k samne Premium Bots, Books aur Courses ka page open ho jata hai.
+            </p>
+            <form id="formNewPremiumKey" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 12px; align-items: flex-end;">
+              <div>
+                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">VIP License Key *</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" id="newPremKeyVal" class="form-input" placeholder="e.g. VIP-PASS-8899" required style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                  <button type="button" id="btnGenRandomPremKey" class="btn-sm-view" title="Generate random VIP key">⚡</button>
+                </div>
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Customer Gmail / WhatsApp</label>
+                <input type="text" id="newPremKeyCustomer" class="form-input" placeholder="customer@gmail.com ya 03001234567" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+              </div>
+
+              <div>
+                <label style="display:block; font-size:0.8rem; font-weight:600; color:var(--text-dim); margin-bottom:4px;">Note / Order Reference</label>
+                <input type="text" id="newPremKeyNote" class="form-input" placeholder="e.g. Paid via JazzCash" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+              </div>
+
+              <button type="submit" class="btn-sm-edit" style="height: 42px; padding: 0 20px; background: linear-gradient(135deg, var(--admin-gold), #ff8800); color: #000; font-weight: 800;">
+                + Issue VIP Key
+              </button>
+            </form>
+          </div>
+
+          <!-- Existing Keys Table -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <h3>Active VIP Premium License Keys</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>VIP License Key</th>
+                    <th>Assigned To</th>
+                    <th>Note</th>
+                    <th>Times Unlocked</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="premiumKeysTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 10: PAYMENT ACCOUNTS (JAZZCASH, CRYPTO, BANK)
+             ================================================================== -->
+        <section id="section-payments" class="admin-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h3>Payment Methods & Gateway Settings</h3>
+                <p style="color:var(--text-dim); font-size:0.85rem; margin-top:2px;">
+                  Configure JazzCash, EasyPaisa, TRC20, or Bank Transfer. Account name and number will be shown in Buy Key modal.
+                </p>
+              </div>
+              <button type="button" class="btn-sm-edit" onclick="window.adminPanel.openAddModal('payment')">
+                + Add Payment Method
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Platform</th>
+                    <th>Account Number / Address</th>
+                    <th>Account Title (Name)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="paymentsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 11: ORDERS & PAYMENT SCREENSHOTS INBOX
+             ================================================================== -->
+        <section id="section-orders" class="admin-section">
+          <div class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h3>Customer Buy Key Orders & Screenshot Verification</h3>
+                <p style="font-size:0.85rem; color:var(--text-dim); margin-top:2px;">
+                  Gmail must show ho rhi hai. Screenshot inspect karein aur 1-Click Approve kar k buyer ko Key send karein.
+                </p>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Customer Gmail (Must)</th>
+                    <th>Contact (WA / TG)</th>
+                    <th>Platform</th>
+                    <th>Screenshot</th>
+                    <th>Status</th>
+                    <th>Issued VIP Key</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================================================================
+             SECTION 12: SITE SETTINGS & ADMIN SECURITY
              ================================================================== -->
         <section id="section-settings" class="admin-section">
           <div class="panel-card" style="padding: 28px; max-width: 800px; margin-bottom: 24px;">
             <h3 style="font-family: var(--font-head); font-size: 1.3rem; margin-bottom: 8px;">Website Branding</h3>
             <p style="color: var(--text-dim); font-size: 0.88rem; margin-bottom: 24px;">
-              Customize platform name, tagline, and header brand logo.
+              Customize platform name, tagline, logo, and WhatsApp support number.
             </p>
 
             <form id="siteSettingsForm">
               <div class="form-group" style="margin-bottom: 18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Site Name / Brand Title</label>
-                <input type="text" id="settingsAppName" class="form-input" placeholder="e.g. TradingStore Pro" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                <input type="text" id="settingsAppName" class="form-input" placeholder="e.g. TradingStore" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
               <div class="form-group" style="margin-bottom: 18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Site Tagline</label>
-                <input type="text" id="settingsTagline" class="form-input" placeholder="e.g. Next-Gen Quantitative Trading Suite & Academy" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
+                <input type="text" id="settingsTagline" class="form-input" placeholder="e.g. Trading Bots, Books, Courses & VIP Academy" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
               <div class="form-group" style="margin-bottom: 18px;">
-                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Logo Image URL (Leave blank to use default TradingStore SVG logo)</label>
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Logo Image URL (Leave blank for default SVG logo)</label>
                 <input type="text" id="settingsLogoUrl" class="form-input" placeholder="https://... or logo.svg" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
               <div class="form-group" style="margin-bottom: 18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">WhatsApp Support Number (Orders & Inquiries) *</label>
                 <input type="text" id="settingsWhatsAppNumber" class="form-input" placeholder="e.g. 923001234567 (Country code k sath, '+' k bina)" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-                <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">
-                  💬 Customers clicking "Inquire on WhatsApp" or "Order via WhatsApp" will directly message this number.
-                </div>
-              </div>
-
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom: 18px;">
-                <div>
-                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Default Display Currency</label>
-                  <select id="settingsCurrency" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:#0d1322; border:1px solid var(--admin-border); color:#fff;">
-                    <option value="USD">USD ($ United States Dollar)</option>
-                    <option value="PKR">PKR (₨ Pakistani Rupee)</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">USD to PKR Exchange Rate</label>
-                  <input type="number" id="settingsUsdToPkr" class="form-input" placeholder="280" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 24px;">
-                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Gatekeeper Visitor Entry Mode</label>
-                <select id="settingsGatekeeperMode" class="form-input" style="width:100%; padding:10px; border-radius:6px; background:#0d1322; border:1px solid var(--admin-border); color:#fff;">
-                  <option value="soft">Soft Mode (Recommended - Visitors browse free catalog, VIP scripts protected)</option>
-                  <option value="strict">Strict Mode (Visitors must join channels or enter key before seeing site)</option>
-                  <option value="disabled">Disabled (No popup, direct open access)</option>
-                </select>
               </div>
 
               <button type="submit" class="btn-sm-edit" style="padding:12px 28px; font-size:0.95rem;">
@@ -687,21 +794,17 @@
               <div>
                 <h3 style="font-family: var(--font-head); font-size: 1.3rem;">Admin Security & Password</h3>
                 <p style="color: var(--text-dim); font-size: 0.88rem; margin-top: 2px;">
-                  Change your administrator username and password. Keep this confidential.
+                  Change your administrator username and password.
                 </p>
               </div>
               <span style="background: rgba(0, 242, 152, 0.15); color: var(--admin-accent); border: 1px solid var(--admin-accent); padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">
-                🛡️ Anti-Hack Active
+                🛡️ Secure
               </span>
-            </div>
-
-            <div style="background: rgba(0, 184, 255, 0.08); border: 1px solid rgba(0, 184, 255, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 22px; font-size: 0.85rem; color: #a5e9ff;">
-              🔒 <strong>Anti-Hack Protection Enabled:</strong> Brute-force attacks are automatically blocked after 5 failed login attempts (10-minute lockout). All inputs are strictly sanitized to prevent injection attacks.
             </div>
 
             <form id="adminCredentialsForm">
               <div style="margin-bottom: 18px;">
-                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Current Admin Password (Required to authorize change) *</label>
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Current Admin Password *</label>
                 <input type="password" id="adminCurrentPassword" class="form-input" required placeholder="Enter your current password" style="width:100%; padding:10px; border-radius:6px; background:rgba(0,0,0,0.3); border:1px solid var(--admin-border); color:#fff;" />
               </div>
 
@@ -735,7 +838,7 @@
   </div>
 
   <!-- ==========================================================================
-       GENERIC MODAL (FOR ADDING/EDITING BOTS, BOOKS, COURSES, VIP, PAYMENTS)
+       GENERIC MODAL (FOR ADDING/EDITING BOTS, BOOKS, COURSES, PREM BOTS, PREM BOOKS, PREM COURSES, PAYMENTS, CHANNELS)
        ========================================================================== -->
   <div class="admin-modal-overlay" id="adminGenericModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(14px); z-index:3000; display:none; align-items:center; justify-content:center; padding:20px;">
     <div class="admin-modal-card">

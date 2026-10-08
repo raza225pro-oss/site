@@ -18,7 +18,13 @@ class DataStore {
    * Initializes store with seed data if empty, and sets up cross-tab synchronization
    */
   init() {
-    const keys = ['bots', 'books', 'courses', 'premium', 'paymentMethods', 'sitePasswords', 'premiumPasswords', 'orders', 'socialLinks', 'siteSettings', 'gatekeeperConfig'];
+    const keys = [
+      'bots', 'books', 'courses',
+      'premiumBots', 'premiumBooks', 'premiumCourses',
+      'paymentMethods', 'sitePasswords', 'premiumPasswords',
+      'orders', 'socialLinks', 'siteSettings',
+      'gatekeeperConfig', 'premiumLockConfig'
+    ];
     
     keys.forEach(key => {
       const stored = localStorage.getItem(this.storageKeyPrefix + key);
@@ -27,16 +33,27 @@ class DataStore {
           this.setLocal(key, APP_CONFIG.defaultSocialLinks);
         } else if (key === 'gatekeeperConfig') {
           this.setLocal(key, APP_CONFIG.gatekeeperConfig || {
+            title: "Site Entry Lock",
             enabled: true,
+            mode: "strict",
             socialVerificationRequired: true,
             passwordUnlockRequired: true,
-            minEngagementSeconds: 8
+            minEngagementSeconds: 8,
+            guestBrowsingAllowed: false
+          });
+        } else if (key === 'premiumLockConfig') {
+          this.setLocal(key, APP_CONFIG.premiumLockConfig || {
+            title: "Premium Page Lock",
+            enabled: true
           });
         } else if (key === 'siteSettings') {
           this.setLocal(key, {
             appName: APP_CONFIG.appName,
             tagline: APP_CONFIG.tagline,
-            logoUrl: "", // blank uses default svg
+            logoUrl: "",
+            whatsappSupportNumber: APP_CONFIG.whatsappSupportNumber || "923001234567",
+            currency: APP_CONFIG.currency || "USD",
+            usdToPkrRate: APP_CONFIG.usdToPkrRate || 280,
             adminPassword: APP_CONFIG.adminDefaults.passwordHash,
             adminUsername: APP_CONFIG.adminDefaults.username
           });
@@ -46,7 +63,7 @@ class DataStore {
       }
     });
 
-    // Listen for storage changes across different browser tabs/windows
+    // Cross-tab synchronization
     window.addEventListener('storage', (e) => {
       if (e.key && e.key.startsWith(this.storageKeyPrefix)) {
         this.notifyListeners();
@@ -57,9 +74,6 @@ class DataStore {
     this.initFirebase();
   }
 
-  /**
-   * Optional Firebase Cloud Firestore live connection
-   */
   async initFirebase() {
     const config = this.getFirebaseConfig();
     if (!config || !config.projectId || !config.apiKey) {
@@ -67,7 +81,6 @@ class DataStore {
     }
 
     try {
-      // Dynamic ESM import from Google Firebase CDN
       const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
       const { getFirestore, collection, doc, onSnapshot, setDoc, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       
@@ -75,8 +88,7 @@ class DataStore {
       this.db = getFirestore(app);
       this.isFirebaseReady = true;
 
-      // Realtime listener for all collections
-      ['bots', 'books', 'courses', 'premium', 'paymentMethods', 'sitePasswords', 'orders'].forEach(colName => {
+      ['bots', 'books', 'courses', 'premiumBots', 'premiumBooks', 'premiumCourses', 'paymentMethods', 'sitePasswords', 'premiumPasswords', 'orders'].forEach(colName => {
         onSnapshot(collection(this.db, colName), (snapshot) => {
           const items = [];
           snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
@@ -87,7 +99,7 @@ class DataStore {
         });
       });
     } catch (err) {
-      console.warn("Firebase initialization skipped or failed, using local/offline storage:", err);
+      console.warn("Firebase initialization skipped, using local storage:", err);
     }
   }
 
@@ -133,8 +145,12 @@ class DataStore {
     });
   }
 
-  // --- CRUD: BOTS ---
-  getBots() { return this.getLocal('bots', []); }
+  // =========================================================================
+  // FREE ITEMS: BOTS, BOOKS, COURSES (MediaFire / Google Drive Links)
+  // =========================================================================
+
+  // 1. FREE BOTS
+  getBots() { return this.getLocal('bots', SEED_DATA.bots || []); }
   saveBot(bot) {
     const list = this.getBots();
     const index = list.findIndex(b => b.id === bot.id);
@@ -153,8 +169,8 @@ class DataStore {
     this.setLocal('bots', list);
   }
 
-  // --- CRUD: BOOKS ---
-  getBooks() { return this.getLocal('books', []); }
+  // 2. FREE BOOKS
+  getBooks() { return this.getLocal('books', SEED_DATA.books || []); }
   saveBook(book) {
     const list = this.getBooks();
     const index = list.findIndex(b => b.id === book.id);
@@ -162,6 +178,7 @@ class DataStore {
       list[index] = { ...list[index], ...book };
     } else {
       book.id = book.id || 'book_' + Date.now();
+      book.createdAt = new Date().toISOString();
       list.unshift(book);
     }
     this.setLocal('books', list);
@@ -172,8 +189,8 @@ class DataStore {
     this.setLocal('books', list);
   }
 
-  // --- CRUD: COURSES ---
-  getCourses() { return this.getLocal('courses', []); }
+  // 3. FREE COURSES
+  getCourses() { return this.getLocal('courses', SEED_DATA.courses || []); }
   saveCourse(course) {
     const list = this.getCourses();
     const index = list.findIndex(c => c.id === course.id);
@@ -181,6 +198,7 @@ class DataStore {
       list[index] = { ...list[index], ...course };
     } else {
       course.id = course.id || 'course_' + Date.now();
+      course.createdAt = new Date().toISOString();
       list.unshift(course);
     }
     this.setLocal('courses', list);
@@ -191,46 +209,100 @@ class DataStore {
     this.setLocal('courses', list);
   }
 
-  // --- CRUD: PREMIUM SCRIPTS ---
-  getPremium() { return this.getLocal('premium', []); }
-  savePremium(item) {
-    const list = this.getPremium();
-    const index = list.findIndex(p => p.id === item.id);
-    if (index >= 0) {
-      list[index] = { ...list[index], ...item };
-    } else {
-      item.id = item.id || 'prem_' + Date.now();
-      list.unshift(item);
+  // =========================================================================
+  // PREMIUM VIP SUB-PAGES: BOTS, BOOKS, COURSES (Inside Premium Hub)
+  // =========================================================================
+
+  // 1. PREMIUM BOTS
+  getPremiumBots() {
+    let list = this.getLocal('premiumBots', null);
+    if (!list || list.length === 0) {
+      list = SEED_DATA.premiumBots || [];
+      this.setLocal('premiumBots', list);
     }
-    this.setLocal('premium', list);
-    return item;
+    return list;
   }
-  deletePremium(id) {
-    const list = this.getPremium().filter(p => p.id !== id);
-    this.setLocal('premium', list);
+  savePremiumBot(bot) {
+    const list = this.getPremiumBots();
+    const index = list.findIndex(b => b.id === bot.id);
+    if (index >= 0) {
+      list[index] = { ...list[index], ...bot };
+    } else {
+      bot.id = bot.id || 'prem_bot_' + Date.now();
+      bot.createdAt = new Date().toISOString();
+      list.unshift(bot);
+    }
+    this.setLocal('premiumBots', list);
+    return bot;
+  }
+  deletePremiumBot(id) {
+    const list = this.getPremiumBots().filter(b => b.id !== id);
+    this.setLocal('premiumBots', list);
   }
 
-  // --- CRUD: PAYMENT METHODS ---
-  getPaymentMethods() { return this.getLocal('paymentMethods', []); }
-  savePaymentMethod(method) {
-    const list = this.getPaymentMethods();
-    const index = list.findIndex(m => m.id === method.id);
-    if (index >= 0) {
-      list[index] = { ...list[index], ...method };
-    } else {
-      method.id = method.id || 'pay_' + Date.now();
-      list.push(method);
+  // 2. PREMIUM BOOKS
+  getPremiumBooks() {
+    let list = this.getLocal('premiumBooks', null);
+    if (!list || list.length === 0) {
+      list = SEED_DATA.premiumBooks || [];
+      this.setLocal('premiumBooks', list);
     }
-    this.setLocal('paymentMethods', list);
-    return method;
+    return list;
   }
-  deletePaymentMethod(id) {
-    const list = this.getPaymentMethods().filter(m => m.id !== id);
-    this.setLocal('paymentMethods', list);
+  savePremiumBook(book) {
+    const list = this.getPremiumBooks();
+    const index = list.findIndex(b => b.id === book.id);
+    if (index >= 0) {
+      list[index] = { ...list[index], ...book };
+    } else {
+      book.id = book.id || 'prem_book_' + Date.now();
+      book.createdAt = new Date().toISOString();
+      list.unshift(book);
+    }
+    this.setLocal('premiumBooks', list);
+    return book;
+  }
+  deletePremiumBook(id) {
+    const list = this.getPremiumBooks().filter(b => b.id !== id);
+    this.setLocal('premiumBooks', list);
   }
 
-  // --- SITE ACCESS PASSWORDS & DEVICE LIMIT ENFORCEMENT ---
-  getSitePasswords() { return this.getLocal('sitePasswords', []); }
+  // 3. PREMIUM COURSES
+  getPremiumCourses() {
+    let list = this.getLocal('premiumCourses', null);
+    if (!list || list.length === 0) {
+      list = SEED_DATA.premiumCourses || [];
+      this.setLocal('premiumCourses', list);
+    }
+    return list;
+  }
+  savePremiumCourse(course) {
+    const list = this.getPremiumCourses();
+    const index = list.findIndex(c => c.id === course.id);
+    if (index >= 0) {
+      list[index] = { ...list[index], ...course };
+    } else {
+      course.id = course.id || 'prem_course_' + Date.now();
+      course.createdAt = new Date().toISOString();
+      list.unshift(course);
+    }
+    this.setLocal('premiumCourses', list);
+    return course;
+  }
+  deletePremiumCourse(id) {
+    const list = this.getPremiumCourses().filter(c => c.id !== id);
+    this.setLocal('premiumCourses', list);
+  }
+
+  // Backward compatibility helper
+  getPremium() {
+    return this.getPremiumBots();
+  }
+
+  // =========================================================================
+  // LOCK 1: SITE ENTRY LOCK & PASSWORDS
+  // =========================================================================
+  getSitePasswords() { return this.getLocal('sitePasswords', SEED_DATA.sitePasswords || []); }
   
   saveSitePassword(passwordObj) {
     const list = this.getSitePasswords();
@@ -264,13 +336,6 @@ class DataStore {
     return false;
   }
 
-  /**
-   * CRITICAL SECURITY CHECK:
-   * Validates access password and enforces max device limits.
-   * If current device is already registered, grants entry.
-   * If not registered and devices count < maxDevices, registers this device and grants entry.
-   * If devices count >= maxDevices, strictly rejects access!
-   */
   verifyAndActivateSitePassword(inputPassword, deviceFingerprint) {
     if (!inputPassword) return { success: false, reason: "EMPTY_PASSWORD" };
     
@@ -288,18 +353,15 @@ class DataStore {
     }
 
     target.usedDevices = target.usedDevices || [];
-    const deviceId = deviceFingerprint.deviceId;
+    const deviceId = (deviceFingerprint && deviceFingerprint.deviceId) || 'browser_dev_' + Math.random().toString(36).substring(2, 9);
 
-    // Check if this device is already in the authorized list for this password
     const existingIndex = target.usedDevices.findIndex(d => d.deviceId === deviceId);
     if (existingIndex >= 0) {
-      // Already authorized on this device!
       target.usedDevices[existingIndex].lastSeen = new Date().toISOString();
       this.setLocal('sitePasswords', list);
       return { success: true, target, alreadyRegistered: true };
     }
 
-    // Check device limit
     const maxAllowed = parseInt(target.maxDevices, 10) || 1;
     if (target.usedDevices.length >= maxAllowed) {
       return {
@@ -310,12 +372,9 @@ class DataStore {
       };
     }
 
-    // Register this new device
     target.usedDevices.push({
       deviceId: deviceId,
-      platform: deviceFingerprint.platform,
-      browser: deviceFingerprint.browser,
-      screen: deviceFingerprint.screen,
+      platform: (deviceFingerprint && deviceFingerprint.platform) || 'web',
       activatedAt: new Date().toISOString(),
       lastSeen: new Date().toISOString()
     });
@@ -324,8 +383,27 @@ class DataStore {
     return { success: true, target, newRegistration: true };
   }
 
-  // --- PREMIUM VIP PAGE PASSWORDS (UNIFIED: UNLOCKS ENTIRE VIP SUITE) ---
-  getPremiumPasswords() { return this.getLocal('premiumPasswords', []); }
+  // =========================================================================
+  // LOCK 2: PREMIUM PAGE LOCK & VIP LICENSE KEYS
+  // =========================================================================
+  getPremiumLockConfig() {
+    return this.getLocal('premiumLockConfig', APP_CONFIG.premiumLockConfig || {
+      title: "Premium Page Lock",
+      enabled: true
+    });
+  }
+
+  savePremiumLockConfig(config) {
+    this.setLocal('premiumLockConfig', config);
+  }
+
+  isPremiumLockEnabled() {
+    const config = this.getPremiumLockConfig();
+    return config && config.enabled !== false;
+  }
+
+  getPremiumPasswords() { return this.getLocal('premiumPasswords', SEED_DATA.premiumPasswords || []); }
+
   savePremiumPassword(keyObj) {
     const list = this.getPremiumPasswords();
     const index = list.findIndex(k => k.id === keyObj.id);
@@ -347,10 +425,6 @@ class DataStore {
     this.setLocal('premiumPasswords', list);
   }
 
-  /**
-   * Validates VIP Key to unlock the ENTIRE Premium VIP page.
-   * One key unlocks all VIP scripts and resources on the page.
-   */
   verifyPremiumKey(inputKey) {
     if (!inputKey) return { success: false, reason: "EMPTY_KEY" };
     const cleanKey = inputKey.trim().toUpperCase();
@@ -369,13 +443,12 @@ class DataStore {
     found.lastUsedAt = new Date().toISOString();
     this.setLocal('premiumPasswords', list);
 
-    // Save unlock status locally
     this.setPremiumPageUnlocked(true, cleanKey);
-
     return { success: true, keyData: found };
   }
 
   isPremiumPageUnlocked() {
+    if (!this.isPremiumLockEnabled()) return true;
     try {
       return localStorage.getItem('tradingstore_premium_unlocked') === 'true';
     } catch (e) {
@@ -396,18 +469,42 @@ class DataStore {
     this.notifyListeners();
   }
 
-  // --- ORDERS & PAYMENT PROOF SUBMISSIONS ---
-  getOrders() { return this.getLocal('orders', []); }
+  // =========================================================================
+  // PAYMENT METHODS (JazzCash, EasyPaisa, TRC20, Bank)
+  // =========================================================================
+  getPaymentMethods() { return this.getLocal('paymentMethods', SEED_DATA.paymentMethods || []); }
+
+  savePaymentMethod(method) {
+    const list = this.getPaymentMethods();
+    const index = list.findIndex(m => m.id === method.id);
+    if (index >= 0) {
+      list[index] = { ...list[index], ...method };
+    } else {
+      method.id = method.id || 'pay_' + Date.now();
+      list.push(method);
+    }
+    this.setLocal('paymentMethods', list);
+    return method;
+  }
+
+  deletePaymentMethod(id) {
+    const list = this.getPaymentMethods().filter(m => m.id !== id);
+    this.setLocal('paymentMethods', list);
+  }
+
+  // =========================================================================
+  // ORDERS & PAYMENT PROOF SUBMISSIONS (GMAIL MUST, CONTACT, SCREENSHOT)
+  // =========================================================================
+  getOrders() { return this.getLocal('orders', SEED_DATA.orders || []); }
   
   addOrder(orderData) {
     const list = this.getOrders();
     const newOrder = {
       id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-      contactNumber: orderData.contactNumber.trim(),
-      productId: orderData.productId,
-      productTitle: orderData.productTitle,
-      platform: orderData.platform,
-      screenshot: orderData.screenshot, // Base64 encoded image or URL
+      gmail: (orderData.gmail || '').trim(), // Gmail is mandatory
+      contactNumber: (orderData.contactNumber || '').trim(), // WhatsApp or Telegram
+      platform: orderData.platform || 'JazzCash',
+      screenshot: orderData.screenshot || '', // Base64 or URL
       note: orderData.note || '',
       status: 'pending', // pending, approved, rejected
       assignedPassword: '',
@@ -436,41 +533,11 @@ class DataStore {
     this.setLocal('orders', list);
   }
 
-  // --- SOCIAL LINKS & GATEKEEPER CHANNELS ---
+  // =========================================================================
+  // SOCIAL LINKS & CHANNEL VERIFICATION
+  // =========================================================================
   getSocialLinks() {
-    const data = this.getLocal('socialLinks', APP_CONFIG.defaultSocialLinks);
-    // Migration: If data is old object format with telegramUrl, migrate to array!
-    if (!Array.isArray(data)) {
-      const migrated = [
-        {
-          id: "link_tg",
-          platform: "telegram",
-          title: data.telegramLabel || "Join Official Telegram VIP Channel",
-          url: data.telegramUrl || "https://t.me/tradingstore_vip",
-          active: true,
-          color: "#2AABEE"
-        },
-        {
-          id: "link_wa",
-          platform: "whatsapp",
-          title: data.whatsappLabel || "Join WhatsApp VIP Broadcast Channel",
-          url: data.whatsappUrl || "https://whatsapp.com/channel/0029VaTradingStore",
-          active: true,
-          color: "#25D366"
-        },
-        {
-          id: "link_yt",
-          platform: "youtube",
-          title: "Subscribe on YouTube for Strategy Tutorials",
-          url: "https://youtube.com/@tradingstore",
-          active: false,
-          color: "#FF0000"
-        }
-      ];
-      this.setLocal('socialLinks', migrated);
-      return migrated;
-    }
-    return data;
+    return this.getLocal('socialLinks', APP_CONFIG.defaultSocialLinks);
   }
 
   getActiveSocialLinks() {
@@ -515,15 +582,18 @@ class DataStore {
     this.setLocal('socialLinks', list);
   }
 
-  // --- GATEKEEPER SETTINGS ---
+  // =========================================================================
+  // GATEKEEPER (LOCK 1: SITE ENTRY LOCK) & SITE SETTINGS
+  // =========================================================================
   getGatekeeperConfig() {
     return this.getLocal('gatekeeperConfig', APP_CONFIG.gatekeeperConfig || {
+      title: "Site Entry Lock",
       enabled: true,
-      mode: "soft",
+      mode: "strict",
       socialVerificationRequired: true,
       passwordUnlockRequired: true,
       minEngagementSeconds: 8,
-      guestBrowsingAllowed: true
+      guestBrowsingAllowed: false
     });
   }
 
@@ -552,13 +622,13 @@ class DataStore {
     return APP_CONFIG.imagePresets || [];
   }
 
-  // Restore factory seed data
   resetAll() {
     Object.keys(SEED_DATA).forEach(key => {
       this.setLocal(key, SEED_DATA[key]);
     });
     this.setLocal('socialLinks', APP_CONFIG.defaultSocialLinks);
     this.setLocal('gatekeeperConfig', APP_CONFIG.gatekeeperConfig);
+    this.setLocal('premiumLockConfig', APP_CONFIG.premiumLockConfig);
     this.notifyListeners();
   }
 }
