@@ -12,9 +12,24 @@ import { APP_CONFIG } from './config.js';
 export class Gatekeeper {
   constructor() {
     this.sessionKey = 'tradingstore_site_entry_access_v4';
+    this.trackingKey = 'tradingstore_link_tracking_v4';
     this.deviceInfo = null;
-    // Dynamic tracking map: { [linkId]: { clicked: boolean, timestamp: number } }
-    this.linkTracking = {};
+    this.linkTracking = this._loadTracking();
+  }
+
+  _loadTracking() {
+    try {
+      const data = sessionStorage.getItem(this.trackingKey);
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  _saveTracking() {
+    try {
+      sessionStorage.setItem(this.trackingKey, JSON.stringify(this.linkTracking));
+    } catch (e) {}
   }
 
   async init() {
@@ -118,6 +133,7 @@ export class Gatekeeper {
       clicked: true,
       timestamp: Date.now()
     };
+    this._saveTracking();
   }
 
   getLinkStatus(linkId) {

@@ -18,6 +18,47 @@ function sanitize(str) {
   return s.replace(/[&<>"'/]/g, c => map[c]);
 }
 
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return '#';
+  const clean = url.trim();
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('#') || clean.startsWith('/')) {
+    return clean;
+  }
+  return '#' + clean;
+}
+
+function compressImage(file, maxWidth = 1000, maxHeight = 1000, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(e.target.result);
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function getPlatformIconSvg(platform) {
   switch (platform) {
     case 'telegram':
@@ -95,8 +136,6 @@ class TradingStoreApp {
     const splashLogoImg = document.getElementById('splashLogoImg');
     const splashBrandName = document.getElementById('splashBrandName');
     const footerAppName = document.getElementById('footerAppName');
-    const headerWa = document.getElementById('headerWaLink');
-    const floatingWa = document.getElementById('floatingWaBtn');
 
     const appName = settings.appName || "TradingStore";
     if (brandName) brandName.innerText = appName;
@@ -106,11 +145,6 @@ class TradingStoreApp {
     const logoSrc = settings.logoUrl || "logo.svg";
     if (logoImg) logoImg.src = logoSrc;
     if (splashLogoImg) splashLogoImg.src = logoSrc;
-
-    const cleanNum = (settings.whatsappSupportNumber || '923001234567').replace(/[^0-9]/g, '');
-    const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent('Assalam-o-Alaikum! Mujhe TradingStore k bare me maloomat chahiye.')}`;
-    if (headerWa) headerWa.href = waUrl;
-    if (floatingWa) floatingWa.href = waUrl;
   }
 
   // --- LOCK 1: SITE ENTRY LOCK (GATEKEEPER) ---
@@ -284,7 +318,7 @@ class TradingStoreApp {
 
     container.innerHTML = filtered.map(item => {
       const logoSrc = sanitize(item.logo || item.cover || item.thumbnail || 'logo.svg');
-      const directLink = sanitize(item.downloadLink || item.tradingViewLink || item.scriptLink || item.accessLink || '#');
+      const directLink = sanitizeUrl(item.downloadLink || item.tradingViewLink || item.scriptLink || item.accessLink || '#');
       const title = sanitize(item.title);
 
       return `
@@ -384,7 +418,7 @@ class TradingStoreApp {
 
     if (methods.length === 0) {
       tabsContainer.innerHTML = '';
-      detailsContainer.innerHTML = '<div style="color:var(--text-muted); padding:10px;">Payment accounts configuration in progress. Contact Admin on WhatsApp.</div>';
+      detailsContainer.innerHTML = '<div style="color:var(--text-muted); padding:10px;">Payment accounts configuration in progress. Please check back shortly.</div>';
       return;
     }
 
@@ -622,19 +656,30 @@ class TradingStoreApp {
     if (dropzone && fileInput) {
       dropzone.addEventListener('click', () => fileInput.click());
 
-      fileInput.addEventListener('change', (e) => {
+      fileInput.addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            this.uploadedScreenshotBase64 = event.target.result;
+          try {
+            const base64 = await compressImage(file, 1200, 1200, 0.78);
+            this.uploadedScreenshotBase64 = base64;
             if (preview) {
-              preview.src = event.target.result;
+              preview.src = base64;
               preview.style.display = 'block';
             }
             if (dropText) dropText.style.display = 'none';
-          };
-          reader.readAsDataURL(file);
+          } catch (err) {
+            console.error("Image compression error, falling back to raw read:", err);
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              this.uploadedScreenshotBase64 = event.target.result;
+              if (preview) {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+              }
+              if (dropText) dropText.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+          }
         }
       });
     }

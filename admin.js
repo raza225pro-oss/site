@@ -589,9 +589,26 @@ class AdminPanel {
     }
 
     tbody.innerHTML = orders.map(ord => {
-      const cleanContact = (ord.contactNumber || '').replace(/[^0-9]/g, '');
-      const waLink = cleanContact ? `https://wa.me/${cleanContact}` : '';
+      const rawContact = (ord.contactNumber || '').trim();
+      const isTg = rawContact.startsWith('@') || rawContact.toLowerCase().includes('t.me') || /[a-zA-Z]/.test(rawContact.replace(/^(\+|00)/, ''));
+      const cleanDigits = rawContact.replace(/[^0-9]/g, '');
       const gmail = sanitize(ord.gmail || '');
+
+      let contactHtml = `<div style="font-weight:700;">${sanitize(rawContact)}</div>`;
+      if (isTg) {
+        const tgHandle = rawContact.replace(/^https?:\/\/t\.me\//, '').replace('@', '').trim();
+        contactHtml += `
+          <a href="https://t.me/${tgHandle}" target="_blank" style="font-size:0.75rem; color:var(--admin-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+            ✈️ Telegram
+          </a>
+        `;
+      } else if (cleanDigits) {
+        contactHtml += `
+          <a href="https://wa.me/${cleanDigits}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+            💬 WhatsApp
+          </a>
+        `;
+      }
 
       return `
         <tr>
@@ -606,12 +623,7 @@ class AdminPanel {
             ` : '<span style="color:var(--admin-red);">Missing</span>'}
           </td>
           <td>
-            <div style="font-weight:700;">${sanitize(ord.contactNumber)}</div>
-            ${cleanContact ? `
-              <a href="${waLink}" target="_blank" style="font-size:0.75rem; color:var(--admin-accent); text-decoration:none;">
-                💬 Open WhatsApp
-              </a>
-            ` : ''}
+            ${contactHtml}
           </td>
           <td><span style="color:var(--admin-gold); font-weight:600;">${sanitize(ord.platform)}</span></td>
           <td>
@@ -722,23 +734,33 @@ class AdminPanel {
     if (!order || !order.assignedPassword) return;
 
     const key = order.assignedPassword;
-    const cleanNum = (order.contactNumber || '').replace(/[^0-9]/g, '');
-    const gmail = order.gmail || '';
+    const rawContact = (order.contactNumber || '').trim();
+    const isTg = rawContact.startsWith('@') || rawContact.toLowerCase().includes('t.me') || /[a-zA-Z]/.test(rawContact.replace(/^(\+|00)/, ''));
+    const cleanDigits = rawContact.replace(/[^0-9]/g, '');
+    const gmail = (order.gmail || '').trim();
 
     const msgText = `Assalam-o-Alaikum!\n\nAap ka payment proof verify ho gya hai.\n\nAap ka VIP Premium Access Key: *${key}*\n\nWebsite par Premium tab open kr k yeh key enter karein aur تمام VIP Bots, Books aur Courses unlock karein!\nShukriya!`;
 
-    const waUrl = cleanNum ? `https://wa.me/${cleanNum}?text=${encodeURIComponent(msgText)}` : '';
-    const mailUrl = gmail ? `mailto:${gmail}?subject=${encodeURIComponent("TradingStore VIP Premium Access Key")}&body=${encodeURIComponent(msgText)}` : '';
+    // Copy key to clipboard
+    this.copyText(key);
 
-    let actionPrompt = `Order ${order.id} Approved!\n\nGenerated VIP Key:\n${key}\n\n`;
-    if (cleanNum) actionPrompt += `1. WhatsApp to: ${cleanNum}\n`;
-    if (gmail) actionPrompt += `2. Gmail to: ${gmail}\n`;
+    let promptMsg = `Order ${order.id} Approved!\n\nVIP Key Generated:\n${key}\n(Key clipboard par copy ho chuki hai!)\n\nCustomer Details:\n`;
+    if (gmail) promptMsg += `• Gmail: ${gmail}\n`;
+    if (isTg) promptMsg += `• Telegram: ${rawContact}\n`;
+    else if (cleanDigits) promptMsg += `• WhatsApp: ${cleanDigits}\n`;
 
-    if (confirm(actionPrompt + `\nKya aap buyer ko WhatsApp ya Email par message send krna chahte hain?`)) {
-      if (cleanNum) {
-        window.open(waUrl, '_blank');
-      } else if (gmail) {
+    promptMsg += `\nKya aap direct dispatch link (Gmail / Chat) open krna chahte hain?`;
+
+    if (confirm(promptMsg)) {
+      if (gmail) {
+        const mailUrl = `mailto:${gmail}?subject=${encodeURIComponent("TradingStore VIP Premium Access Key")}&body=${encodeURIComponent(msgText)}`;
         window.open(mailUrl, '_blank');
+      } else if (isTg) {
+        const tgHandle = rawContact.replace(/^https?:\/\/t\.me\//, '').replace('@', '').trim();
+        window.open(`https://t.me/${tgHandle}`, '_blank');
+      } else if (cleanDigits) {
+        const waUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(msgText)}`;
+        window.open(waUrl, '_blank');
       }
     }
   }
@@ -1146,13 +1168,11 @@ class AdminPanel {
     const appNameInput = document.getElementById('settingsAppName');
     const taglineInput = document.getElementById('settingsTagline');
     const logoUrlInput = document.getElementById('settingsLogoUrl');
-    const waNumInput = document.getElementById('settingsWhatsAppNumber');
     const adminNewUser = document.getElementById('adminNewUsername');
 
     if (appNameInput) appNameInput.value = settings.appName || 'TradingStore';
     if (taglineInput) taglineInput.value = settings.tagline || '';
     if (logoUrlInput) logoUrlInput.value = settings.logoUrl || '';
-    if (waNumInput) waNumInput.value = settings.whatsappSupportNumber || '923001234567';
     if (adminNewUser) adminNewUser.value = settings.adminUsername || 'admin';
 
     // Clear password inputs
@@ -1168,15 +1188,13 @@ class AdminPanel {
     const appName = document.getElementById('settingsAppName')?.value.trim();
     const tagline = document.getElementById('settingsTagline')?.value.trim();
     const logoUrl = document.getElementById('settingsLogoUrl')?.value.trim();
-    const waNum = document.getElementById('settingsWhatsAppNumber')?.value.trim() || '923001234567';
 
     const current = store.getSiteSettings();
     store.saveSiteSettings({
       ...current,
       appName: appName || "TradingStore",
       tagline: tagline || "Trading Bots, Books, Courses & VIP Academy",
-      logoUrl: logoUrl,
-      whatsappSupportNumber: waNum
+      logoUrl: logoUrl
     });
 
     this.showToast("Branding settings saved successfully!", "success");
